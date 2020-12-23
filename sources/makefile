@@ -59,10 +59,10 @@ svga3.obj:      SVGA.ASM
                 tasm /z /zn /m5 /DVer3=1 /DP80286=0 /DP80386=0 svga, svga3
 
 svga286.bgi:    svga2286.bin
-                bh2 svga2286 svga286 SVGA
+                bh2 svga2286 svga286 SVGA286
 
 svga286.bp7:    svga3286.bin
-                bh3 svga3286 svga3286 svga3286.map SVGA
+                bh3 svga3286 svga3286 svga3286.map SVGA286
 		-del svga3286.bp7
 		-ren svga3286.bgi svga286.bp7
 
@@ -87,7 +87,7 @@ svga3286.obj:   SVGA.ASM
                 tasm /z /zn /m5 /DVer3=1 /DP80286=1 /DP80386=0 svga, svga3286
 
 svga386.bgi:    svga2386.bin
-                bh2 svga2386 svga386 SVGA
+                bh2 svga2386 svga386 SVGA386
 
 svga386.bp7:    svga3386.bin
                 bh3 svga3386 svga3386 svga3386.map SVGA386
@@ -136,11 +136,6 @@ obj:
 		bgiobj /F svga.bgi svgaf _SVGA_driver_far
 		bgiobj /F svga286.bgi svga286f _SVGA_driver_far
 		bgiobj /F svga386.bgi svga386f _SVGA_driver_far
-
-
-		del bgifar.lib
-		for %%i in (FAR\*.obj) do tlib bgifar +%%i , bgifar.lst
-
 
 dist:           
 		-del ..\svga\*

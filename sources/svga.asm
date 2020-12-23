@@ -21,10 +21,6 @@ SMART
 INCLUDE "macros.asi"
 
 
-IFNDEF Ver3
-Ver3  = 0
-ENDIF
-
 
 ; ==================================================
 ; Mit den folgenden Symbolen kann die Codeerzeugung gesteuert werden.
@@ -68,8 +64,6 @@ ASSUME  CS:CODE, DS:DATA
 ELSE
 ASSUME  CS:CODE, DS:CODE
 ENDIF
-
-Start:
 
 ;---------------------------------------------------
 ; Definition der verwendeten structs einbinden
@@ -182,8 +176,7 @@ PROC    Install NEAR
 ; Es ist kein Autodetect-Modus
 
 @@L2:   sub     cx, MaxAutoMode
-@@L3:   ;fastimul ax, cx, SIZE TMode
-		mov     ax, SIZE TMode                  ; LÑnge eines Tabelleneintrages
+@@L3:   mov     ax, SIZE TMode                  ; LÑnge eines Tabelleneintrages
         mul     cx                              ; * Eintragsnummer
         mov     bx, ax
         mov     bx, [(TMode ModeTable + bx).ModeName]   ; Zeiger auf Namen
@@ -195,7 +188,7 @@ InstallDevice:
         push    cx                              ; Modus retten
         call    GetOpts                         ; Environment-Optionen holen
         pop     cx
-        xor     ch, ch
+        mov     ch, 0
         cmp     cl, ModeCount                   ; Modus zulÑssig ?
         jae     IllegalMode                     ; NEIN !
         jcxz    @@L5                            ; Modus 0
@@ -337,21 +330,16 @@ PROC    Init NEAR
 
         mov     di, [ModePtr]
         mov     bl, [(TMode di).CardType]
-        xor     bh, bh
+        mov     bh, 0
         shl     bx, 1
         mov     ax, [SegSwitchTable+bx]
         mov     [SegSelect], ax
 
 ; Den Zeiger auf die VESA-Umschaltroutine zurÅcksetzen
 
-IF P80386
-        xor     eax, eax
-        mov     [VESA_WinFunc], eax
-ELSE
         xor     ax, ax
         mov     [WORD LOW VESA_WinFunc], ax
         mov     [WORD HIGH VESA_WinFunc], ax
-ENDIF
 
 ; Modus einstellen. Hier mÅssen bei gesetzter Option M die VESA-Funktions-
 ; nummern verwendet werden
@@ -434,9 +422,9 @@ PROC    Clear   NEAR
         cld
 
 IF      P80386
-        xor     eax, eax
+        sub     eax, eax
 ELSE
-        xor     ax, ax
+        sub     ax, ax
 ENDIF
         mov     cx, [WORD LOW ScreenBytes]
         mov     dx, [WORD HIGH ScreenBytes]
@@ -508,7 +496,7 @@ PROC    Post    NEAR
 ; alloziert worden. Diesen freigeben.
 
         mov     bx, [WORD HIGH VESA_WinFunc]
-        test    bx, bx                          ; Belegt ?
+        or      bx, bx                          ; Belegt ?
         jz      @@L1                            ; Springe wenn Nein
 
         call    DPMI_FreeDesc                   ; Deskriptor freigeben
@@ -638,24 +626,19 @@ Even
         cmp     ax, bx                  ; Y-Wert > YMax ?
         jl      @@L1                    ; Springe wenn Nein
         xchg    ax, bx                  ; öbernehme wenn ja
-        LOOPCX  @@L0                    ; Wert > Max kann nicht < Min sein
+        loopcx  @@L0                    ; Wert > Max kann nicht < Min sein
         jmp     @@C1
 
 @@L1:   cmp     ax, dx                  ; Y-Wert < YMin ?
         jg      @@L2                    ; Springe wenn Nein
         xchg    ax, dx                  ; öbernehme wenn ja
-@@L2:   LOOPCX  @@L0                    ; NÑchster Punkt
+@@L2:   loopcx  @@L0                    ; NÑchster Punkt
         jmp     @@C1
 
 ; Der Punkt ist ungÅltig und wird beim Kopieren Åbersprungen
 
-@@L3:   
-		IF P80386
-		    add     si, 2	; Y-Wert ignorieren
-		ELSE
-			inc     si
-	        inc     si	; Y-Wert ignorieren
-		ENDIF
+@@L3:   inc     si
+        inc     si                      ; Y-Wert ignorieren
         dec     [Count]                 ; Ein Punkt weniger
         jmp     @@L0                    ; und nÑchster Punkt
 
@@ -758,7 +741,7 @@ Even
 ; NÑchste Linie adressieren
 
 @@L9:   add     si, 4                   ; NÑchster Polygonpunkt
-        LOOPCX  @@L5
+        loopcx  @@L5
 
 ; In der Linienliste befindet sich jetzt eine ungeordnete Folge von
 ; X-Werten. Diese mÅssen aufsteigend sortiert werden.
@@ -784,7 +767,7 @@ Even
         jnz     @@L11
 
         mov     [WORD ds:si-2], ax      ; Kleinsten Wert rÅckspeichern
-        LOOPCX  @@L10                   ; NÑchster X-Wert
+        loopcx  @@L10                   ; NÑchster X-Wert
 
 ; Die Linienliste ist jetzt aufsteigend sortiert. FÅr jeweils zwei
 ; Punkte daraus wird ein horizontale Linie ausgegeben. Dazu mu·
@@ -889,15 +872,11 @@ ENDIF
         mov     di, OFFSET FillPattern
         push    ds
         pop     es
-IF P80386
-        movsd
-        movsd
-ELSE
         movsw
         movsw
         movsw
         movsw
-ENDIF
+
 ; Und Ende
 
         ret
@@ -947,7 +926,7 @@ ENDIF
 IF      Ver3
         les     bx, [Int1F]             ; Vektor 1F holen
 ELSE
-        xor     bx, bx
+        sub     bx, bx
         mov     es, bx
         les     bx, [DWORD es:07Ch]
 ENDIF
@@ -1056,7 +1035,7 @@ Local   YMult: Word, Diff: Word = LocalSize
 
 ; Adresse des ersten Punktes rechnen
 
-        xor     ah, ah
+        mov     ah, 0
         mov     di, ax                  ; Zeichen in di
         mov     ax, cx                  ; ax = Y
         add     ax, [PageOfs]           ; Korrektur fÅr aktuelle Bildschirmseite
@@ -1128,7 +1107,7 @@ OutCharEnd:
 @@OC5:  mov     [es:di], al             ; Pixel setzen
         inc     di                      ; NÑchstes Pixel
         jz      @@OC9                   ; Segment-öberlauf behandeln
-@@OC6:  LOOPCX  @@OC5
+@@OC6:  loopcx  @@OC5
 
 ; NÑchstes Zeichen-Pixel
 
@@ -1189,7 +1168,7 @@ CharLoop:
 
 @@L1:   add     [CursorX], dx
         inc     bx
-@@L2:   LOOPCX  CharLoop
+@@L2:   loopcx  CharLoop
 
 ; Fertig
 
@@ -1280,7 +1259,7 @@ PROC    LineStyle Near
 
         cmp     al, 04h                 ; User-defined ?
         jz      @@L1                    ; ja
-        xor     ah, ah
+        mov     ah, 0
         shl     ax, 1                   ; Nummer * 2 wegen Word
         mov     bx, ax
         mov     bx, [LineStyles+bx]     ; Bitmuster holen
@@ -1404,7 +1383,12 @@ Save1:  mov     cx, bp                  ; Breite des Rechtecks = Anzahl Punkte
         jc      Save4                   ; Ja, öberlauf
 
 ; Zeile hat keinen öberlauf
-		RepMovS
+
+        shr     cx, 1                   ; / 2 fÅr Worte
+        rep     movsw                   ; Worte kopieren
+        adc     cx, cx                  ; Noch ein Carry Åbrig ?
+        rep     movsb                   ; Byte kopieren falls Carry
+
 ; Neue Zeile
 
 Save2:  add     si, dx
@@ -1421,9 +1405,9 @@ Save3:  dec     bx                      ; Noch Zeilen ?
 
 Even
 Save4:  movsb                           ; Byte Åbertragen
-        test    si, si
+        or      si, si
         jz      Save6                   ; öbertrag
-Save5:  LOOPCX  Save4
+Save5:  loopcx  Save4
         jmp     Save2
 
 ; Segment-öberlauf in der X-Schleife korrigieren
@@ -1519,32 +1503,27 @@ IF P80386
         jnc     @@L2                    ;; Nein
         lodsw                           ;; Ja: Wort verarbeiten
         OP      [WORD es:di], ax
-		IF P80386        
-			add     di, 2
-		ELSE
-        	inc     di
-        	inc     di
-    	ENDIF
+        inc     di
+        inc     di
 @@L2:   jcxz    @@L7
 
 ALIGN 4
-@@L3:   lodsd
+@@L3:   mov     eax, [si]
+        add     si, 4
         OP      [DWORD es:di], eax      ;; XORen
         add     di, 4
-        loop	@@L3
+        dec     cx
+        jnz     @@L3
         ret
 ELSE
 
 ALIGN 4
 @@L2:   lodsw                           ;; Wort holen
         OP      [WORD es:di], ax        ;; XORen
-		IF P80386
-			add     di, 2	; nÑchstes Wort adressieren
-		ELSE
-			inc     di
-	        inc     di	; Y-Wert ignorieren
-		ENDIF
-        loop	@@L2
+        inc     di                      ;; nÑchstes Wort adressieren
+        inc     di
+        dec     cx
+        jnz     @@L2
         ret
 ENDIF
 
@@ -1555,8 +1534,8 @@ EVEN
         OP      [BYTE es:di], al        ;; XORen
         inc     di
         jz      @@L6                    ;; Kein öbertrag
-@@L5:   
-		loop	@@L4
+@@L5:   dec     cx
+        jnz     @@L4
 @@L7:   ret
 
 @@L6:   mov     ax, ds                  ;; ds retten
@@ -1582,16 +1561,20 @@ PROC    RestoreOver     Near
         jc      ROver1                  ; öberlauf mîglich
 
 ; Kein öberlauf mîglich
-		RepMovS
+
+        shr     cx, 1                   ; / 2
+        rep     movsw                   ; Kopieren von Worten
+        adc     cx, cx                  ; War da noch ein Carry ?
+        rep     movsb                   ; 1 Byte kopieren falls Carry
         ret                             ; und Ende
 
 ; Zeile kopieren wenn Segment-öberlauf in der Zeile
 
 Even
 ROver1: movsb                           ; Byte Åbertragen
-        test    di, di
+        or      di, di
         jz      ROver3                  ; Kein öbertrag
-ROver2: LOOPCX  ROver1
+ROver2: loopcx  ROver1
         ret
 
 ROver3: mov     ax, ds                  ; ds retten
@@ -1634,7 +1617,7 @@ RNOT1:  lodsb                           ; Byte holen
         mov     [Byte es:di], al        ; NOTen
         inc     di
         jz      RNOT3                   ; öbertrag
-RNOT2:  LOOPCX  RNOT1
+RNOT2:  loopcx  RNOT1
         ret
 
 RNOT3:  mov     ax, ds                  ; ds retten
@@ -1654,13 +1637,14 @@ PROC    RestoreTrans    NEAR
 
 @@L1:   mov     al, [si]                ; Byte holen
         inc     si
-        test     al, al                   ; = 0
+        cmp     al, 0                   ; = 0
         jz      @@L3                    ; Dann nicht schreiben
         mov     [es:di], al             ; Byte schreiben
         inc     di
         test    di, di                  ; öberlauf ?
         jz      @@L2                    ; Springe wenn ja
-        loop	@@L1
+        dec     cx
+        jnz     @@L1
         jmp     @@L4                    ; Springe ans Ende
 
 ; Segment-öberlauf behandeln
@@ -2141,7 +2125,7 @@ PROC    SetDrawPage FAR
 
         mov     bx, [ModePtr]                   ; Zeiger auf Modus-Deskriptor
         mov     bl, [(TMode bx).CardType]       ; Kartentyp holen
-        xor     bh, bh                           ; ... nach bx
+        mov     bh, 0                           ; ... nach bx
         shl     bx, 1                           ; * 2 fÅr Wortzugriff
         call    [SetDrawPageTable+bx]           ; kartenspezifischer Aufruf
 
@@ -2160,7 +2144,7 @@ PROC    SetVisualPage FAR
 
         mov     bx, [ModePtr]                   ; Zeiger auf Modus-Deskriptor
         mov     bl, [(TMode bx).CardType]       ; Kartentyp holen
-        xor     bh, bh                           ; ... nach bx
+        mov     bh, 0                           ; ... nach bx
         shl     bx, 1                           ; * 2 fÅr Wortzugriff
         call    [SetVisualPageTable+bx]         ; kartenspezifischer Aufruf
 
@@ -2324,7 +2308,7 @@ ENDIF
 
 ; Zwei SpezialfÑlle abprÅfen: EmptyFill und SolidFill.
 
-        xor     ah, ah                  ; Farbe = Hintergrundfarbe
+        mov     ah, 00                  ; Farbe = Hintergrundfarbe
         mov     al, [FillColor]
         cmp     [FillPatternNum], SolidFill
         je      PatBar1                 ; al = SolidFill-Farbe
@@ -2369,9 +2353,12 @@ Bar1:   mov     cx, [BW]                ; Breite des Rechtecks = Anzahl Punkte
         test    di, 1                   ; Adresse ungerade ?
         jz      Bar02                   ; Nein
         movsb                           ; 1 Byte kopieren (--> Adresse gerade)
-        loopz   Bar03                   ; ein Byte weniger Fertig !
-Bar02:
-		RepMovS
+        dec     cx                      ; ein Byte weniger
+        jcxz    Bar03                   ; Fertig !
+Bar02:  shr     cx, 1
+        rep     movsw
+        adc     cx, cx
+        rep     movsb
 Bar03:  mov     ds, dx
 
 ; NÑchste Linie
@@ -2419,7 +2406,7 @@ Bar5:   rol     ah, 1                   ; Punkt setzen ?
         mov     [Byte es:di], bl        ; BkColor
         inc     di                      ; NÑchste Adresse
         jz      Bar6                    ; öberlauf korrigieren
-Bar7:   LOOPCX  Bar5                    ; NÑchster Punkt
+Bar7:   loopcx  Bar5                    ; NÑchster Punkt
         jmp     Bar4                    ; NÑchste Linie
 
 ; Hierher wenn Punkt gesetzt wird
@@ -2428,7 +2415,7 @@ Even
 Bar3:   mov     [es:di], bh             ; Punkt in FÅllfarbe setzen
         inc     di                      ; NÑchsten Punkt adressieren
         jz      Bar8                    ; öberlauf korigieren
-Bar9:   LOOPCX  Bar5                    ; NÑchster Punkt
+Bar9:   loopcx  Bar5                    ; NÑchster Punkt
         jmp     Bar4                    ; NÑchste Linie
 
 ; Hier Einsprung bei Segment-öberlÑufen
@@ -2467,7 +2454,8 @@ PB1:    mov     cx, bp                  ; Breite des Rechtecks
         test    di, 1                   ; Adresse ungerade ?
         jz      PB4                     ; Nein
         stosb                           ; Punkt setzen
-        loopz	PB5						; Breite war 1
+        dec     cx
+        jcxz    PB5                     ; Breite war 1
 
 PB4:    shr     cx, 1                   ; / 2
         rep     stosw                   ; Worte setzen bis cx = 0
@@ -2491,7 +2479,7 @@ PB2:    mov     [es:di], al             ; Pixel setzen
         jnz     PB3                     ; kein Segment-öberlauf
         inc     [Seg64]                 ; öberlauf
         call    [SegSelect]             ; und Segment einstellen
-PB3:    LOOPCX  PB2
+PB3:    loopcx  PB2
         jmp     PB5
 
 ENDP    PatBar
@@ -2615,7 +2603,7 @@ Local   X1: WORD = LocalSize
 ; korrekt geplottet und die Adress-Berechnung stimmt ohne 10-zeilige
 ; Assembler KlimmzÅge in der innersten Schleife.
 
-        test    di, di                  ; Ist di negativ ?
+        or      di, di                  ; Ist di negativ ?
         jns     @@L3                    ; Nein
         add     si, di                  ; si = DeltaX vermindern
         xor     di, di                  ; X1 = 0
@@ -2782,9 +2770,9 @@ Local X: WORD, Y: WORD, Diff: DWORD, QA: DWORD, QB: DWORD, QA2: DWORD, \
 
 ; PrÅfen, ob einer der beiden Radien <= 0 ist. Wenn ja, direkt Ende
 
-        test    cx, cx
+        or      cx, cx
         jle     @@N1
-        test    dx, dx
+        or      dx, dx
         jg      @@N2
 @@N1:   ret
 
@@ -3106,7 +3094,7 @@ PROC    Arc     NEAR
 
 ; PrÅfen ob es sich um eine 360¯ Ellipse handelt
 
-        test    ax, ax                  ; Startwinkel = 0 ?
+        or      ax, ax                  ; Startwinkel = 0 ?
         jnz     @@L2                    ; Nein
         cmp     bx, 360                 ; Endwinkel = 360 ?
         jnz     @@L2                    ; Nein
@@ -3162,7 +3150,7 @@ PROC    PieSlice Near
 
 ; PrÅfen ob es sich um eine 360¯ Ellipse handelt
 
-        test    ax, ax                  ; Startwinkel = 0 ?
+        or      ax, ax                  ; Startwinkel = 0 ?
         jnz     @@L2                    ; Nein
         cmp     bx, 360                 ; Endwinkel = 360 ?
         jnz     @@L2                    ; Nein
@@ -3233,9 +3221,9 @@ PROC    Generic_HorLine Near
 
         cmp     ah, 0FFh                ; Alles farbig ?
         jz      EPL_Solid
-        test    ah, ah                   ; Alles Hintergrund ?
+        cmp     ah, 0                   ; Alles Hintergrund ?
         jnz     EPL_Pattern             ; Nein, Muster
-        xor     al, al                   ; Hintergrundfarbe holen
+        mov     al, 0                   ; Hintergrundfarbe holen
 
 ; Die Linie wird in einer Farbe gezogen. Hier geht's mit rep stosb erheblich
 ; schneller.
@@ -3314,13 +3302,13 @@ EVEN
 @@L3:   rol     ah, 1
         jnc     @@L4
         stosb                           ; Pixel in Farbe setzen
-        LOOPCX  @@L3
+        loopcx  @@L3
         jmp     short @@L5
 
 EVEN
 @@L4:   mov     [Byte es:di], 0         ; Pixel in Hintergrundfarbe fÅllen
         inc     di
-        LOOPCX  @@L3
+        loopcx  @@L3
 @@L5:
 
         inc     [Seg64]                 ; NÑchstes Segment...
@@ -3335,13 +3323,13 @@ EVEN
 @@L7:   rol     ah, 1
         jnc     @@L8
         stosb                           ; Pixel in Farbe setzen
-        LOOPCX  @@L7
+        loopcx  @@L7
         jmp     short @@L9
 
 EVEN
 @@L8:   mov     [Byte es:di], 0         ; Pixel in Hintergrundfarbe fÅllen
         inc     di
-        LOOPCX  @@L7
+        loopcx  @@L7
 
 ; Das war's
 
@@ -4018,15 +4006,14 @@ ModePtr         dw      ModeTable               ; VGA 320x200
 
 DST     Status <>
 
+
 IF      Ver3
 ENDS    Data
 ELSE
 ENDS    Code
 ENDIF
 
-END Start
-
-
+END
 
 ; ------------------------------------------------------------------------------
 
