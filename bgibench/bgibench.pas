@@ -95,7 +95,7 @@ CONST
   Mult        = 200;
 
 
-  TestSuit    : ARRAY [1..19] OF Suit = (
+  TestSuit    : ARRAY [1..21] OF Suit = (
     (Desc : 'Diagonale durchgezogene Linie (kein XOR)        [ms]: '),
     (Desc : 'Waagrechte durchgezogene Linie (kein XOR)       [ms]: '),
     (Desc : 'Senkrechte durchgezogene Linie (kein XOR)       [ms]: '),
@@ -114,7 +114,9 @@ CONST
     (Desc : 'PutImage 100x100 (kein XOR)                     [ms]: '),
     (Desc : 'PutImage 100x100 (XOR)                          [ms]: '),
     (Desc : 'FillPoly ohne Muster                            [ms]: '),
-    (Desc : 'FillPoly mit Muster                             [ms]: ')
+    (Desc : 'FillPoly mit Muster                             [ms]: '),
+    (Desc : 'PieSlice ohne Muster                            [ms]: '),
+    (Desc : 'PieSlice mit Muster                             [ms]: ')
   );
 
   { Turbo-Treiber }
@@ -631,6 +633,22 @@ BEGIN
     T := SystemTime - T;
   END;
 
+  WITH TestSuit [20] DO BEGIN
+    SetFillStyle (SolidFill, LightBlue);
+    SetColor (LightBlue);
+    T := SystemTime;
+    FOR I := 1 TO Mult DO PieSlice (550, 150, 0, 290, 70);
+    T := SystemTime - T;
+  END;
+
+  WITH TestSuit [21] DO BEGIN
+    SetFillStyle (SlashFill, LightBlue);
+    SetColor (LightBlue);
+    T := SystemTime;
+    FOR I := 1 TO Mult DO PieSlice (550, 300, 0, 290, 70);
+    T := SystemTime - T;
+  END;
+
   { RÅckschalten auf Text }
   CloseGraph;
 
@@ -654,4 +672,3 @@ BEGIN
   Writeln ('Gesamtzeit fÅr alle Tests zusammen              [ms]: ',
             (TimeSlice * TotalTime) * 1000 / Mult : 6 : 2);
 END.
-

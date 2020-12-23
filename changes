@@ -155,5 +155,11 @@ Version                 énderungen
                         voraus, da· logische und echte ZeilenlÑnge identisch
                         sind (das ist bei der Ansteuerung Åber VESA-Treiber
                         z.T. der Fall).
-
+4.00	23.12.2020	- Made it possible to assembly with TASM 5.
+			- Included neccessary Borland tools.
+			- Added 286 optimized BGI/BP7 drivers.
+			-  Applied some speed and size optimizations:
+			   BGIBENCH SVGA 5
+			   SVGA 3.51A:   196.25     n/a  188.55
+			   SVGA 4.00:    196.25  195.15  185.60
 

@@ -1,6 +1,7 @@
 
 
                   SVGA.BGI (C) 1990-95 Ullrich von Bassewitz
+                           (C) 2020 by Javier Gutiérrez Chamorro
 
                                   README.TXT
 

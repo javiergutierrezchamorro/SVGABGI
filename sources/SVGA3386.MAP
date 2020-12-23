@@ -1,0 +1,15 @@
+
+ Start  Stop   Length Name               Class
+
+ 00000H 021E1H 021E2H CODE               CODE
+ 021F0H 026F2H 00503H DATA               DATA
+
+
+Detailed map of segments
+
+ 0000:0000 21E2 C=CODE   S=CODE           G=(none)    M=SVGA.ASM   ACBP=68
+ 021F:0000 0503 C=DATA   S=DATA           G=(none)    M=SVGA.ASM   ACBP=68
+
+Program entry point at 0000:0000
+Warning: No stack
+

@@ -21,6 +21,10 @@ SMART
 INCLUDE "macros.asi"
 
 
+IFNDEF Ver3
+Ver3  = 0
+ENDIF
+
 
 ; ==================================================
 ; Mit den folgenden Symbolen kann die Codeerzeugung gesteuert werden.
@@ -64,6 +68,8 @@ ASSUME  CS:CODE, DS:DATA
 ELSE
 ASSUME  CS:CODE, DS:CODE
 ENDIF
+
+Start:
 
 ;---------------------------------------------------
 ; Definition der verwendeten structs einbinden
@@ -176,7 +182,8 @@ PROC    Install NEAR
 ; Es ist kein Autodetect-Modus
 
 @@L2:   sub     cx, MaxAutoMode
-@@L3:   mov     ax, SIZE TMode                  ; L„nge eines Tabelleneintrages
+@@L3:   ;fastimul ax, cx, SIZE TMode
+		mov     ax, SIZE TMode                  ; L„nge eines Tabelleneintrages
         mul     cx                              ; * Eintragsnummer
         mov     bx, ax
         mov     bx, [(TMode ModeTable + bx).ModeName]   ; Zeiger auf Namen
@@ -188,7 +195,7 @@ InstallDevice:
         push    cx                              ; Modus retten
         call    GetOpts                         ; Environment-Optionen holen
         pop     cx
-        mov     ch, 0
+        xor     ch, ch
         cmp     cl, ModeCount                   ; Modus zul„ssig ?
         jae     IllegalMode                     ; NEIN !
         jcxz    @@L5                            ; Modus 0
@@ -330,16 +337,21 @@ PROC    Init NEAR
 
         mov     di, [ModePtr]
         mov     bl, [(TMode di).CardType]
-        mov     bh, 0
+        xor     bh, bh
         shl     bx, 1
         mov     ax, [SegSwitchTable+bx]
         mov     [SegSelect], ax
 
 ; Den Zeiger auf die VESA-Umschaltroutine zurcksetzen
 
+IF P80386
+        xor     eax, eax
+        mov     [VESA_WinFunc], eax
+ELSE
         xor     ax, ax
         mov     [WORD LOW VESA_WinFunc], ax
         mov     [WORD HIGH VESA_WinFunc], ax
+ENDIF
 
 ; Modus einstellen. Hier mssen bei gesetzter Option M die VESA-Funktions-
 ; nummern verwendet werden
@@ -872,11 +884,15 @@ ENDIF
         mov     di, OFFSET FillPattern
         push    ds
         pop     es
+IF P80386
+        movsd
+        movsd
+ELSE
         movsw
         movsw
         movsw
         movsw
-
+ENDIF
 ; Und Ende
 
         ret
@@ -1035,7 +1051,7 @@ Local   YMult: Word, Diff: Word = LocalSize
 
 ; Adresse des ersten Punktes rechnen
 
-        mov     ah, 0
+        xor     ah, ah
         mov     di, ax                  ; Zeichen in di
         mov     ax, cx                  ; ax = Y
         add     ax, [PageOfs]           ; Korrektur fr aktuelle Bildschirmseite
@@ -1259,7 +1275,7 @@ PROC    LineStyle Near
 
         cmp     al, 04h                 ; User-defined ?
         jz      @@L1                    ; ja
-        mov     ah, 0
+        xor     ah, ah
         shl     ax, 1                   ; Nummer * 2 wegen Word
         mov     bx, ax
         mov     bx, [LineStyles+bx]     ; Bitmuster holen
@@ -1383,12 +1399,7 @@ Save1:  mov     cx, bp                  ; Breite des Rechtecks = Anzahl Punkte
         jc      Save4                   ; Ja, šberlauf
 
 ; Zeile hat keinen šberlauf
-
-        shr     cx, 1                   ; / 2 fr Worte
-        rep     movsw                   ; Worte kopieren
-        adc     cx, cx                  ; Noch ein Carry brig ?
-        rep     movsb                   ; Byte kopieren falls Carry
-
+		RepMovS
 ; Neue Zeile
 
 Save2:  add     si, dx
@@ -1561,11 +1572,7 @@ PROC    RestoreOver     Near
         jc      ROver1                  ; šberlauf m”glich
 
 ; Kein šberlauf m”glich
-
-        shr     cx, 1                   ; / 2
-        rep     movsw                   ; Kopieren von Worten
-        adc     cx, cx                  ; War da noch ein Carry ?
-        rep     movsb                   ; 1 Byte kopieren falls Carry
+		RepMovS
         ret                             ; und Ende
 
 ; Zeile kopieren wenn Segment-šberlauf in der Zeile
@@ -1637,7 +1644,7 @@ PROC    RestoreTrans    NEAR
 
 @@L1:   mov     al, [si]                ; Byte holen
         inc     si
-        cmp     al, 0                   ; = 0
+        test     al, al                   ; = 0
         jz      @@L3                    ; Dann nicht schreiben
         mov     [es:di], al             ; Byte schreiben
         inc     di
@@ -2125,7 +2132,7 @@ PROC    SetDrawPage FAR
 
         mov     bx, [ModePtr]                   ; Zeiger auf Modus-Deskriptor
         mov     bl, [(TMode bx).CardType]       ; Kartentyp holen
-        mov     bh, 0                           ; ... nach bx
+        xor     bh, bh                           ; ... nach bx
         shl     bx, 1                           ; * 2 fr Wortzugriff
         call    [SetDrawPageTable+bx]           ; kartenspezifischer Aufruf
 
@@ -2144,7 +2151,7 @@ PROC    SetVisualPage FAR
 
         mov     bx, [ModePtr]                   ; Zeiger auf Modus-Deskriptor
         mov     bl, [(TMode bx).CardType]       ; Kartentyp holen
-        mov     bh, 0                           ; ... nach bx
+        xor     bh, bh                           ; ... nach bx
         shl     bx, 1                           ; * 2 fr Wortzugriff
         call    [SetVisualPageTable+bx]         ; kartenspezifischer Aufruf
 
@@ -2308,7 +2315,7 @@ ENDIF
 
 ; Zwei Spezialf„lle abprfen: EmptyFill und SolidFill.
 
-        mov     ah, 00                  ; Farbe = Hintergrundfarbe
+        xor     ah, ah                  ; Farbe = Hintergrundfarbe
         mov     al, [FillColor]
         cmp     [FillPatternNum], SolidFill
         je      PatBar1                 ; al = SolidFill-Farbe
@@ -2355,10 +2362,8 @@ Bar1:   mov     cx, [BW]                ; Breite des Rechtecks = Anzahl Punkte
         movsb                           ; 1 Byte kopieren (--> Adresse gerade)
         dec     cx                      ; ein Byte weniger
         jcxz    Bar03                   ; Fertig !
-Bar02:  shr     cx, 1
-        rep     movsw
-        adc     cx, cx
-        rep     movsb
+Bar02:
+		RepMovS
 Bar03:  mov     ds, dx
 
 ; N„chste Linie
@@ -3221,9 +3226,9 @@ PROC    Generic_HorLine Near
 
         cmp     ah, 0FFh                ; Alles farbig ?
         jz      EPL_Solid
-        cmp     ah, 0                   ; Alles Hintergrund ?
+        test    ah, ah                   ; Alles Hintergrund ?
         jnz     EPL_Pattern             ; Nein, Muster
-        mov     al, 0                   ; Hintergrundfarbe holen
+        xor     al, al                   ; Hintergrundfarbe holen
 
 ; Die Linie wird in einer Farbe gezogen. Hier geht's mit rep stosb erheblich
 ; schneller.
@@ -4013,7 +4018,7 @@ ELSE
 ENDS    Code
 ENDIF
 
-END
+END Start
 
 ; ------------------------------------------------------------------------------
 

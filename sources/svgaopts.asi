@@ -45,7 +45,7 @@ PROC    GetOpts       NEAR
         cld
 @@L2:   mov     di, OFFSET OptText      ; String
         mov     cl, [BYTE es:di]        ; L„nge nach cl
-        mov     ch, 0                   ; ... in cx
+        xor     ch, ch                   ; ... in cx
         inc     di                      ; Zeiger hinter L„ngenbyte stellen
         repz    cmpsb                   ; Eintrag gefunden ?
         jz      @@L4                    ; Eintrag gefunden !

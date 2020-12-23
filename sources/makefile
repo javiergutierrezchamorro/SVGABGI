@@ -5,53 +5,123 @@
 #
 
 
-.SILENT
+#.SILENT
 .AUTODEPEND
 
 
 # ---------------------------------------------------------------
 # Dummy-Abh„ngigkeit
 
-all:            svga
+all:            svgabgi svgabp7 svga286bgi svga286bp7 svga386bgi svga386bp7 clean
 
-svga:           svga.bgi
+svgabgi:        svga.bgi
 
-svga386:        svga386.bgi
+svgabp7:        svga.bp7
+
+svga286bgi:     svga286.bgi
+
+svga286bp7:     svga286.bp7
+
+svga386bgi:     svga386.bgi
+
+svga386bp7:     svga386.bp7
+
 
 # ---------------------------------------------------------------
 # Files
 
-svga.bgi:       svga.bin
-                bh3 svga svga svga SVGA
+svga.bgi:       svga2.bin
+                bh2 svga2 svga SVGA
 
-svga.bin:       svga.exe
-                exetobin svga.exe svga.bin
+svga.bp7:       svga3.bin
+                bh3 svga3 svga3 svga3.map SVGA
+		del svga3.bp7
+		ren svga3.bgi svga.bp7
 
-svga.exe:       svga.obj
-                tlink /s /v svga
-                tdstrip -s svga
+svga2.bin:      svga2.exe
+                exetobin svga2
 
-svga.obj:       svga.asm
-                tasm /zi /m5 /DVer3=1 /DP80286=0 /DP80386=0 svga
+svga3.bin:      svga3.exe
+                exetobin svga3
 
-svga386.bgi:    svga386.bin
-                bh3 svga386 svga386 svga386 SVGA386
+svga2.exe:      svga2.obj
+                tlink /s /v svga2
+                tdstrip -s svga2
 
-svga386.bin:    svga386.exe
-                exetobin svga386.exe svga386.bin
+svga3.exe:      svga3.obj
+                tlink /s /v svga3
+                tdstrip -s svga3
 
-svga386.exe:    svga386.obj
-                tlink /s /v svga386
-                tdstrip -s svga386
+svga2.obj:      SVGA.ASM
+                tasm /z /zn /m5 /DVer3=0 /DP80286=0 /DP80386=0 svga, svga2
 
-svga386.obj:    svga.asm
-                tasm /zi /m5 /DVer3=1 /DP80286=1 /DP80386=1 svga,svga386
+svga3.obj:      SVGA.ASM
+                tasm /z /zn /m5 /DVer3=1 /DP80286=0 /DP80386=0 svga, svga3
+
+svga286.bgi:    svga2286.bin
+                bh2 svga2286 svga286 SVGA286
+
+svga286.bp7:    svga3286.bin
+                bh3 svga3286 svga3286 svga3286.map SVGA286
+		del svga3286.bp7
+		ren svga3286.bgi svga286.bp7
+
+svga2286.bin:   svga2286.exe
+                exetobin svga2286
+
+svga3286.bin:      svga3286.exe
+                exetobin svga3286
+
+svga2286.exe:   svga2286.obj
+                tlink /s /v svga2286
+                tdstrip -s svga2286
+
+svga3286.exe:   svga3286.obj
+                tlink /s /v svga3286
+                tdstrip -s svga3286
+
+svga2286.obj:   SVGA.ASM
+                tasm /z /zn /m5 /DVer3=0 /DP80286=1 /DP80386=0 svga, svga2286
+
+svga3286.obj:   SVGA.ASM
+                tasm /z /zn /m5 /DVer3=1 /DP80286=1 /DP80386=0 svga, svga3286
+
+svga386.bgi:    svga2386.bin
+                bh2 svga2386 svga386 SVGA386
+
+svga386.bp7:    svga3386.bin
+                bh3 svga3386 svga3386 svga3386.map SVGA386
+		del svga3386.bp7
+		ren svga3386.bgi svga386.bp7
+
+svga2386.bin:   svga2386.exe
+                exetobin svga2386
+
+svga3386.bin:   svga3386.exe
+                exetobin svga3386
+
+svga2386.exe:   svga2386.obj
+                tlink /s /v svga2386
+                tdstrip -s svga2386
+
+svga3386.exe:   svga3386.obj
+                tlink /s /v svga3386
+                tdstrip -s svga3386
+
+svga2386.obj:   SVGA.ASM
+                tasm /z /zn /m5 /DVer3=0 /DP80286=1 /DP80386=1 svga, svga2386
+
+svga3386.obj:   SVGA.ASM
+                tasm /z /zn /m5 /DVer3=1 /DP80286=1 /DP80386=1 svga, svga3386
+
+
+
 
 # ---------------------------------------------------------------
 # Dummy-Targets
 
 clean:
-                -del *.bak *.map *.prn *.$$$ svga*.bin
+                -del *.bak *.map *.prn *.$$$ svga*.bin svga*.bin
 
 zap:            clean
                 -del *.obj svga*.exe svga*.tds

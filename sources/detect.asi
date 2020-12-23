@@ -114,7 +114,7 @@ PROC    CheckParadise NEAR
         mov     ah, 1                   ; Page 1
         out     dx, ax                  ; einstellen
         xchg    bl, [BYTE es:di]        ; Testwert 1 setzen
-        mov     ah, 0                   ; Page 0
+        xor     ah, ah                   ; Page 0
         out     dx, ax                  ; einstellen
         xchg    bh, [BYTE es:di]        ; Testwert 2 setzen
         mov     cx, bx                  ; Wert merken
@@ -123,7 +123,7 @@ PROC    CheckParadise NEAR
         out     dx, ax                  ; einstellen
         xor     bl, [BYTE es:di]        ; Wert prÅfen
         mov     [BYTE es:di], cl        ; Orginalwert setzen
-        mov     ah, 0                   ; Page 0
+        xor     ah, ah                   ; Page 0
         out     dx, ax                  ; einstellen
         xor     bh, [BYTE es:di]        ; Testwert 2 prÅfen
         mov     [BYTE es:di], ch        ; Orginalwert setzen
@@ -153,7 +153,7 @@ Local   Card:WORD, VideoMode: BYTE = LocalSize
         call    Int10
 
         mov     bl, [BYTE LOW Card]
-        mov     bh, 0
+        xor     bh, bh
         shl     bx, 1
         mov     bx, [SegSwitchTable+bx] ; Adresse der Umschaltroutine
 
@@ -189,7 +189,7 @@ Local   Card:WORD, VideoMode: BYTE = LocalSize
 ; Alten Videomodus wiederherstellen
 
         mov     al, [VideoMode]         ; Orginaler Videomodus
-        mov     ah, 0                   ; = Setze Modus
+        xor     ah, ah                   ; = Setze Modus
         push    bx                      ; Karte/Modi retten
         call    Int10
         pop     bx

@@ -3,6 +3,8 @@
                                 SVGA.BGI
 
               (C) Copyright 1991-1995 Ullrich von Bassewitz
+                 (C) 2020 by Javier Gutiérrez Chamorro
+
 
                  Bedingungen fuer Nutzung und Weitergabe
 

@@ -115,7 +115,7 @@ PROC    S3_Vect Near
 @@L2:   S3_Out  FRGD_MIX
 
         mov     al, [DrawingColor]
-        mov     ah, 0
+        xor     ah, ah
         S3_Out  FRGD_COLOR
 
 ; Jetzt durchgezogene/gestrichelte Linien unterscheiden
@@ -177,7 +177,7 @@ PROC    S3_Vect Near
         S3_Out  BKGD_MIX
 
         mov     al, [BkColor]
-        mov     ah, 0
+        xor     ah, ah
         S3_Out  BKGD_COLOR
 
 ; Mask data selecting mix register provided by cpu
@@ -473,7 +473,7 @@ PROC    S3_HorLineInit  NEAR
         S3_Out  FRGD_MIX
 
         mov     al, [FillColor]
-        mov     ah, 0
+        xor     ah, ah
         S3_Out  FRGD_COLOR
 
 ; Background Mix und Hintergrundfarbe setzen
@@ -482,7 +482,7 @@ PROC    S3_HorLineInit  NEAR
         S3_Out  BKGD_MIX
 
         mov     al, [BkColor]
-        mov     ah, 0
+        xor     ah, ah
         S3_Out  BKGD_COLOR
 
 ; Mask data selecting mix register provided by cpu
