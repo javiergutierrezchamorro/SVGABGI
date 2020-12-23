@@ -1,0 +1,175 @@
+                 Dokumentation zum Programm BGIBENCH
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Das Programm BGIBENCH dient der Messung einiger Operationen eines BGI-
+Grafiktreibers.
+
+Der Quellcode ist beigefÅgt und kann beliebig modifiziert werden. Das Programm
+dient gleichzeitig als Beispielprogramm fÅr die Anwendung von SVGA.BGI.
+
+Aufruf:
+
+  BGIBENCH [[Treibername[.BGI]]  Modus]
+
+Ist sowohl der Name als auch der Modus angegeben, so legt BGIBENCH direkt los,
+startet die Grafik-Operationen und gibt zum Schlu· eine öbersicht Åber die
+gemessenen Zeiten aus. Diese Ausgabe geht Åber stdout, kann also z.B. mittels
+
+  BGIBENCH  SVGA  5 > SVGA.BEN
+
+in die Datei SVGA.BEN umgeleitet werden (z.B. fÅr Vergleiche).
+
+Sind ein oder beide Parameter nicht angegeben, so fragt BGIBENCH nach, die
+Umleitung ist dann aber nicht mîglich, da Eingaben erwartet werden, die
+Ausgaben jedoch in ein File gehen.
+
+Zur Modus-Erkennung eines unbekannten (also bei TP und TC nicht mitgelieferten)
+Treibers schaltet BGIBENCH in den Modus 0 des Treibers und liest dann die Namen
+aller verfÅgbaren Modi ein. Daraus wird dann ein Auswahl-Menue
+zusammengestellt. Dies bedeutet, da· sowohl die verwendete Karte als auch der
+Monitor den Modus 0 des verwendeten Treibers beherrschen mÅssen.
+ACHTUNG: Das Umschalten der Karte in einen Modus, fÅr den der Monitor nicht
+geeignet ist, kann den Monitor gefÑhrden.
+
+Bei SVGA.BGI ist der Modus 0 der standardisierte VGA-Modus mit 320x200 in 256
+Farben, den jeder VGA-Monitor beherrscht. Hier sind also keine Probleme zu
+erwarten.
+
+Soll einer der Standard-Treiber von TP/TC ausgemessen werden, so ist als
+Treiber der entsprechende Name anzugeben, also z.B. "VGA" fÅr den EGAVGA-
+Treiber im Modus VGA oder "EGA" fÅr den EGAVGA-Treiber im Modus EGA. BGIBench
+schaltet den Treiber in den hîchsten Modus, also fÅr VGA z.B. in VGAHi. Ein
+zweiter Parameter in der Kommandozeile wird ignoriert.
+
+Ein Test des Standard-Treibers EGAVGA auf einer VGA-Karte ist also mîglich
+mit
+
+  BGIBENCH VGA > VGA.BEN
+
+Der angegebene Treiber mu· sich im aktuellen Verzeichnis befinden.
+
+
+
+Protected-Mode
+~~~~~~~~~~~~~~
+Das Programm verÑndert wÑhrend der Laufzeit den Timer bzw. verwendet einen
+eigenen Interrupt-Handler fÅr den INT 08h. Es ist aus diesem Grund nicht
+Protected-Mode tauglich.
+
+
+
+Vergleich verschiedener Karten bzw. Treiber
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Durch die identische Ansteuerung (unterschiedlich ist nur die Segment-
+Umschaltung) ist es leicht mîglich verschiedene Karten zu vergleichen.
+Als Beispiel hier zwei Video-Karten auf demselbern Rechner (NoName
+33 MHz 386 DX). Wie zu sehen ist, ist die Tseng-Karte etwas schneller
+als der Trident-Nachbau.
+Auch der Vergleich des Modus 640x480x256 mit dem Modus 640x480x16 des
+Borland-Treibers EGAVGA.BGI spricht BÑnde...
+
+
+---------------------------------- ET4000 ---------------------------------
+
+BGIBench   (C) 1991 Ullrich von Bassewitz
+Treiber: SVGA
+Modus  : 640x480x256 Tseng ET4000
+
+Diagonale durchgezogene Linie (kein XOR)        [ms]:   0.85
+Waagrechte durchgezogene Linie (kein XOR)       [ms]:   0.65
+Senkrechte durchgezogene Linie (kein XOR)       [ms]:   0.80
+Waagrechter Text Grî·e 1                        [ms]:   1.15
+Senkrechter Text Grî·e 1                        [ms]:   1.30
+Waagrechter Text Grî·e 3                        [ms]:   3.90
+Senkrechter Text Grî·e 3                        [ms]:   4.05
+GefÅllte FlÑche 100x100 ohne Muster             [ms]:   3.05
+GefÅllte FlÑche 100x100 mit Muster              [ms]:   7.35
+Kreis mit Radius = 50, Breite 1 Pixel           [ms]:   1.60
+Kreis mit Radius = 50, Breite 3 Pixel           [ms]:   6.55
+Ellipse, a = 30, b = 50, Breite 1 Pixel         [ms]:   1.30
+Ellipse, a = 30, b = 50, Breite 3 Pixel         [ms]:   5.40
+Voll ausgefÅllte Ellipse, a = 20, b = 40        [ms]:   6.85
+GetImage 100x100                                [ms]:   4.05
+PutImage 100x100 (kein XOR)                     [ms]:   3.45
+PutImage 100x100 (XOR)                          [ms]:  15.65
+------------------------------------------------------------
+Gesamtzeit fÅr alle Tests zusammen              [ms]:  67.95
+
+
+BGIBench   (C) 1991 Ullrich von Bassewitz
+Treiber: VGA
+Modus  : 640 x 480 VGA
+
+Diagonale durchgezogene Linie (kein XOR)        [ms]:   2.55
+Waagrechte durchgezogene Linie (kein XOR)       [ms]:   1.45
+Senkrechte durchgezogene Linie (kein XOR)       [ms]:   1.30
+Waagrechter Text Grî·e 1                        [ms]:   3.50
+Senkrechter Text Grî·e 1                        [ms]:   3.75
+Waagrechter Text Grî·e 3                        [ms]:  25.50
+Senkrechter Text Grî·e 3                        [ms]:  25.75
+GefÅllte FlÑche 100x100 ohne Muster             [ms]:   2.60
+GefÅllte FlÑche 100x100 mit Muster              [ms]:   5.15
+Kreis mit Radius = 50, Breite 1 Pixel           [ms]:   7.20
+Kreis mit Radius = 50, Breite 3 Pixel           [ms]:  62.20
+Ellipse, a = 30, b = 50, Breite 1 Pixel         [ms]:   5.85
+Ellipse, a = 30, b = 50, Breite 3 Pixel         [ms]:  61.65
+Voll ausgefÅllte Ellipse, a = 20, b = 40        [ms]:  67.10
+GetImage 100x100                                [ms]:  10.75
+PutImage 100x100 (kein XOR)                     [ms]:  25.25
+PutImage 100x100 (XOR)                          [ms]:  26.55
+------------------------------------------------------------
+Gesamtzeit fÅr alle Tests zusammen              [ms]: 338.10
+
+
+------------------------------- Trident 8900 -------------------------------
+
+BGIBench   (C) 1991 Ullrich von Bassewitz
+Treiber: SVGA
+Modus  : 640x480x256 Trident 8900
+
+Diagonale durchgezogene Linie (kein XOR)        [ms]:   0.95
+Waagrechte durchgezogene Linie (kein XOR)       [ms]:   0.75
+Senkrechte durchgezogene Linie (kein XOR)       [ms]:   0.95
+Waagrechter Text Grî·e 1                        [ms]:   1.15
+Senkrechter Text Grî·e 1                        [ms]:   1.35
+Waagrechter Text Grî·e 3                        [ms]:   4.25
+Senkrechter Text Grî·e 3                        [ms]:   4.35
+GefÅllte FlÑche 100x100 ohne Muster             [ms]:   4.00
+GefÅllte FlÑche 100x100 mit Muster              [ms]:   8.70
+Kreis mit Radius = 50, Breite 1 Pixel           [ms]:   1.75
+Kreis mit Radius = 50, Breite 3 Pixel           [ms]:   7.60
+Ellipse, a = 30, b = 50, Breite 1 Pixel         [ms]:   1.40
+Ellipse, a = 30, b = 50, Breite 3 Pixel         [ms]:   6.05
+Voll ausgefÅllte Ellipse, a = 20, b = 40        [ms]:   8.00
+GetImage 100x100                                [ms]:   4.40
+PutImage 100x100 (kein XOR)                     [ms]:   4.40
+PutImage 100x100 (XOR)                          [ms]:  18.40
+------------------------------------------------------------
+Gesamtzeit fÅr alle Tests zusammen              [ms]:  78.45
+
+
+BGIBench   (C) 1991 Ullrich von Bassewitz
+Treiber: VGA
+Modus  : 640 x 480 VGA
+
+Diagonale durchgezogene Linie (kein XOR)        [ms]:   2.80
+Waagrechte durchgezogene Linie (kein XOR)       [ms]:   1.45
+Senkrechte durchgezogene Linie (kein XOR)       [ms]:   1.35
+Waagrechter Text Grî·e 1                        [ms]:   3.95
+Senkrechter Text Grî·e 1                        [ms]:   4.20
+Waagrechter Text Grî·e 3                        [ms]:  29.10
+Senkrechter Text Grî·e 3                        [ms]:  29.35
+GefÅllte FlÑche 100x100 ohne Muster             [ms]:   3.25
+GefÅllte FlÑche 100x100 mit Muster              [ms]:   5.85
+Kreis mit Radius = 50, Breite 1 Pixel           [ms]:   7.35
+Kreis mit Radius = 50, Breite 3 Pixel           [ms]:  69.10
+Ellipse, a = 30, b = 50, Breite 1 Pixel         [ms]:   5.95
+Ellipse, a = 30, b = 50, Breite 3 Pixel         [ms]:  68.45
+Voll ausgefÅllte Ellipse, a = 20, b = 40        [ms]:  74.45
+GetImage 100x100                                [ms]:  12.25
+PutImage 100x100 (kein XOR)                     [ms]:  31.40
+PutImage 100x100 (XOR)                          [ms]:  29.55
+------------------------------------------------------------
+Gesamtzeit fÅr alle Tests zusammen              [ms]: 379.80
+

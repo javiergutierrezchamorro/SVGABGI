@@ -1,0 +1,565 @@
+; *****************************************************************************
+; *                                                                           *
+; *            S3 spezifische Routinen fÅr den SVGA.BGI Treiber               *
+; *                                                                           *
+; * (C) 1990-94 by                                                            *
+; * Ullrich von Bassewitz                                                     *
+; * ZwehrenbÅhlstra·e 33                                                      *
+; * D-72070 TÅbingen                                                          *
+; *                                                                           *
+; * E-Mail: uz@ibb.schwaben.de                                                *
+; *                                                                           *
+; *****************************************************************************
+
+
+
+; -----------------------------------------------------------------------
+; Defines fÅr die erweiterten Register des S3 Chipsatzes. Die Bezeichner
+; entsprechen denen aus dem Handbuch
+;
+
+ADVFUNC_CNTL            = 04AE8h
+CUR_Y                   = 082E8h
+CUR_X                   = 086E8h
+DESTY_AXSTP             = 08AE8h
+DESTX_DIASTP            = 08EE8h
+ERR_TERM                = 092E8h
+MAJ_AXIS_PCNT           = 096E8h
+CMD                     = 09AE8h
+GP_STAT                 = 09AE8h
+SHORT_STROKE            = 09EE8h
+BKGD_COLOR              = 0A2E8h
+FRGD_COLOR              = 0A6E8h
+WRT_MASK                = 0AAE8h
+RD_MASK                 = 0AEE8h
+COLOR_CMP               = 0B2E8h
+BKGD_MIX                = 0B6E8h
+FRGD_MIX                = 0BAE8h
+MULTIFUNC_CNTL          = 0BEE8h
+MIN_AXIS_PCNT           = 0BEE8h
+SCISSORS_T              = 0BEE8h
+SCISSORS_L              = 0BEE8h
+SCISSORS_B              = 0BEE8h
+SCISSORS_R              = 0BEE8h
+PIX_CNTL                = 0BEE8h
+PIX_TRANS               = 0E2E8h
+
+
+; -----------------------------------------------------------------------
+; Diverse Macros.
+;
+
+; Macro der wartet bis im Befehls-FIFO eine bestimmte Anzahl PlÑtze frei sind
+
+MACRO   S3_Wait CmdCount
+LOCAL   L
+
+        mov     dx, GP_STAT
+L:      in      ax, dx
+        cmp     al, 00FFh SHR CmdCount
+        ja      L
+
+ENDM
+
+
+; Macro der einen Wert auf einen S3 Port ausgibt
+
+MACRO   S3_Out  Port
+
+        mov     dx, Port
+        out     dx, ax
+
+ENDM
+
+; -----------------------------------------------------------------------
+; Line-Routine unter Verwendung der S3 Graphics Engine
+;
+; Wird aufgerufen mit X1/Y1 = ax/bx, X2/Y2 = cx/dx
+;
+
+PROC    S3_Vect Near
+
+; X und Y Startwerte fÅr spÑter auf den Stack
+
+        push    bx                      ; Y1
+        push    ax                      ; X1
+
+; Diverse Werte rechnen
+
+        mov     di, 10100000b
+
+        sub     cx, ax                  ; cx = Abs (X2 - X1)
+        jg      @@A1
+        and     di, NOT 20h             ; X drawing direction is negative
+        neg     cx
+@@A1:   sub     dx, bx                  ; dx = Abs (Y2 - Y1)
+        jg      @@A2
+        and     di, NOT 80h             ; Y drawing direction is negative
+        neg     dx
+@@A2:   cmp     cx, dx
+        jge     @@A3
+        xchg    cx, dx
+        or      di, 0040h
+@@A3:   mov     bx, dx                  ; bx = Min, cx = Max
+
+; Auf freie FIFO PlÑtze warten
+
+        S3_Wait 7
+
+; Vordergrund Farbe und Vordergrund Mix setzen
+
+        mov     ax, 27h                 ; Normal mode
+        cmp     [WriteMode], 0
+        jz      @@L2
+        mov     ax, 25h                 ; XOR mode
+@@L2:   S3_Out  FRGD_MIX
+
+        mov     al, [DrawingColor]
+        mov     ah, 0
+        S3_Out  FRGD_COLOR
+
+; Jetzt durchgezogene/gestrichelte Linien unterscheiden
+
+        cmp     [LinePattern], 0FFFFh
+        jnz     @@L5
+
+; Mask data selecting mix register
+
+        mov     ax, 0A000h
+        S3_Out  MULTIFUNC_CNTL
+
+; Warten bis 7 FIFO PlÑtze frei sind
+
+        S3_Wait 7
+
+; Startwert fÅr X/Y schreiben
+
+        pop     ax                      ; X1
+        S3_Out  CUR_X
+        pop     ax                      ; Y1
+        add     ax, [PageOfs]
+        S3_Out  CUR_Y
+
+; MAJ_AXIS_PCNT = Max
+
+        mov     ax, cx                  ; cx = Max
+        S3_Out  MAJ_AXIS_PCNT
+
+; DESTX_DIASTP = 2 * (Min - Max)
+
+        mov     ax, bx                  ; bx = Min
+        sub     ax, cx                  ; cx = Max
+        sal     ax, 1
+        S3_Out  DESTX_DIASTP
+
+; DESTY_AXSTP = 2 * Min
+
+        mov     ax, bx                  ; bx = Min
+        shl     ax, 1
+        S3_Out  DESTY_AXSTP
+
+        sub     ax, cx                  ; 2 * Min - Max
+        test    di, 0020h
+        jz      @@L3
+        dec     ax
+@@L3:   S3_Out  ERR_TERM
+
+        mov     ax, 02013h
+        or      ax, di
+        S3_Out  CMD
+
+        ret
+
+; Linie mit Muster
+; Background Mix und Hintergrundfarbe so setzen, dass der Hintergrund bleibt
+
+@@L5:   mov     ax, 3
+        S3_Out  BKGD_MIX
+
+        mov     al, [BkColor]
+        mov     ah, 0
+        S3_Out  BKGD_COLOR
+
+; Mask data selecting mix register provided by cpu
+
+        mov     ax, 0A080h
+        S3_Out  MULTIFUNC_CNTL
+
+; Warten bis 7 FIFO PlÑtze frei sind
+
+        S3_Wait 7
+
+; Startwert fÅr X/Y schreiben
+
+        pop     ax                      ; X1
+        S3_Out  CUR_X
+        pop     ax                      ; Y1
+        add     ax, [PageOfs]
+        S3_Out  CUR_Y
+
+; MAJ_AXIS_PCNT = Max
+
+        mov     ax, cx                  ; cx = Max
+        S3_Out  MAJ_AXIS_PCNT
+
+; DESTX_DIASTP = 2 * (Min - Max)
+
+        mov     ax, bx                  ; bx = Min
+        sub     ax, cx                  ; cx = Max
+        sal     ax, 1
+        S3_Out  DESTX_DIASTP
+
+; DESTY_AXSTP = 2 * Min
+
+        mov     ax, bx                  ; bx = Min
+        shl     ax, 1
+        S3_Out  DESTY_AXSTP
+
+        sub     ax, cx                  ; 2 * Min - Max
+        test    di, 0020h
+        jz      @@L6
+        dec     ax
+@@L6:   S3_Out  ERR_TERM
+
+        mov     ax, 02313h
+        or      ax, di
+        S3_Out  CMD
+
+; Muster raushauen
+
+        mov     ax, [LinePattern]
+        S3_Out  COLOR_CMP
+        ret
+
+ENDP    S3_Vect
+
+
+; ======================================================================
+;
+; Ready: Wartet bis der Grafikprozessor arbeitslos ist
+;
+
+PROC    S3_Ready        NEAR
+
+        push    dx
+        push    ax
+        mov     dx, GP_STAT
+@@L1:   in      ax, dx
+        test    ax, 0200h
+        jnz     @@L1
+        pop     ax
+        pop     dx
+        ret
+
+ENDP    S3_Ready
+
+; ======================================================================
+;
+; CLEAR: Lîscht den Grafik-Bildschirm
+;
+; Es wird der S3-Befehl zum Zeichnen eines Rechtecks verwendet
+;
+
+PROC    S3_Clear NEAR
+
+; Warten bis genÅgend FIFO PlÑtze frei sind, dann Vordergrund-Mix, die Farbe
+; und das Kontrollregister setzen
+
+        S3_Wait 3
+
+        mov     ax, 0027h
+        S3_Out  FRGD_MIX
+        sub     ax, ax
+        S3_Out  FRGD_COLOR
+        mov     ax, 0A000h
+        S3_Out  MULTIFUNC_CNTL
+
+; Zeichenoperation durchfÅhren
+
+        S3_Wait 5
+
+        sub     ax, ax
+        S3_Out  CUR_X
+        mov     ax, [PageOfs]
+        S3_Out  CUR_Y
+        mov     ax, [MaxX]
+        S3_Out  MAJ_AXIS_PCNT
+        mov     ax, [MaxY]
+        S3_Out  MIN_AXIS_PCNT
+        mov     ax, 040F3h
+        S3_Out  CMD
+
+        ret
+
+ENDP    S3_Clear
+
+; ======================================================================
+;
+;         DW      FILLSTYLE       ; Set the filling pattern
+;
+;   Input:
+;      al         Primary fill pattern number
+;      es:bx      If the pattern number is 0FFh, this points to user define
+;                 pattern mask.
+;
+;   Return:
+;      Nothing
+;
+;
+PROC    S3_FillStyle    NEAR
+
+; Zuerst das alte FillStyle zum Setzen des Musters aufrufen
+
+        call    FillStyle
+
+; Jetzt fÅr das schnelle FÅllen von gemusterten FlÑchen ausserhalb des
+; sichtbaren Bildschirms ein 8x8 grosses Rechteck mit dem aktuellen Muster
+; fÅllen. Dazu einfach PatBar benutzen (_nicht_ S3_PatBar) und zuvor den
+; Offset fÅr die Schreibseite auf 0 setzen
+
+        push    [PageOfs]
+        sub     ax, ax
+        mov     [PageOfs], ax
+        mov     bx, [MaxY]
+        mov     cx, 7
+        lea     dx, [bx+7]
+        call    PatBar
+        pop     [PageOfs]
+
+; Fertig!
+
+        ret
+
+ENDP    S3_FillStyle
+
+
+;   ================================================================
+;
+;         DW      PATBAR          ; fill rectangle (X1,Y1), (X2,Y2)
+;
+;   Input:
+;      ax         X1--the rectangle's left coordinate
+;      bx         Y1--the rectangle's top coordinate
+;      cx         X2--the rectangle's right coordinate
+;      dx         Y2--the rectangle's bottom coordinate
+;
+;   Return:
+;      Nothing
+;
+; Fill (but don't outline) the indicated rectangle with the current fill
+; pattern and fill color.
+;
+
+PROC    S3_PatBar       NEAR
+
+; X1/Y1 und X2/Y2 so umnudeln das X1<=X2 und Y1<=Y2.
+; X2 und Y2 werden nur benîtigt um Breite und Hîhe zu rechnen und werden nicht
+; gespeichert
+; Die Umtauscherei am Anfang ist leider notwendig, wenn auch nicht
+; dokumentiert...
+
+        cmp     ax,cx
+        jb      @@L1
+        xchg    ax,cx
+@@L1:   cmp     bx,dx
+        jb      @@L2
+        xchg    bx,dx
+
+; X1/Y1, X2/Y2 in X/Y und Hîhe/Breite umrechnen
+
+@@L2:   sub     cx, ax                  ; cx = Breite
+        sub     dx, bx                  ; dx = Hîhe
+        push    dx
+        push    ax
+
+        cmp     [FillPatternNum], SolidFill
+        jz      @@L3
+        cmp     [FillPatternNum], EmptyFill
+        jz      @@L3
+
+; Es ist ein gemustertes Rechteck, PatBLT verwenden
+
+        S3_Wait 2
+
+        mov     ax, 0A000h
+        S3_Out  MULTIFUNC_CNTL
+        mov     ax, 0067h
+        S3_Out  FRGD_MIX
+
+; Zeichenoperation durchfÅhren
+
+        S3_Wait 7
+
+        sub     ax, ax
+        S3_Out  CUR_X
+        mov     ax, [MaxY]
+        S3_Out  CUR_Y
+        pop     ax
+        S3_Out  DESTX_DIASTP
+        mov     ax, bx
+        add     ax, [PageOfs]
+        S3_Out  DESTY_AXSTP
+        mov     ax, cx
+        S3_Out  MAJ_AXIS_PCNT
+        pop     ax
+        S3_Out  MIN_AXIS_PCNT
+        mov     ax, 0E0B3h
+        S3_Out  CMD
+
+        ret
+
+
+; Warten bis genÅgend FIFO PlÑtze frei sind, dann Vordergrund-Mix, die Farbe
+; und das Kontrollregister setzen
+
+@@L3:   S3_Wait 3
+
+        mov     ax, 0027h
+        S3_Out  FRGD_MIX
+
+        sub     ax, ax
+        cmp     [FillPatternNum], EmptyFill
+        jz      @@L4
+        mov     al, [FillColor]
+@@L4:   S3_Out  FRGD_COLOR
+
+        mov     ax, 0A000h
+        S3_Out  MULTIFUNC_CNTL
+
+; Zeichenoperation durchfÅhren
+
+        S3_Wait 5
+
+        pop     ax
+        S3_Out  CUR_X
+        mov     ax, bx
+        add     ax, [PageOfs]
+        S3_Out  CUR_Y
+        mov     ax, cx
+        S3_Out  MAJ_AXIS_PCNT
+        pop     ax
+        S3_Out  MIN_AXIS_PCNT
+        mov     ax, 040F3h
+        S3_Out  CMD
+
+        ret
+
+ENDP    S3_PatBar
+
+
+; ================================================================
+;
+; Ziehen einer horizontalen Linie im aktuellen FÅllmuster ohne Clipping
+;
+; Unterprogramm fÅr FullEllipsePlot und FillPoly. Wird aufgerufen mit ax = Y,
+; bx = X1, cx = X2, es = VideoSegment.
+;
+; Frei verwendet werden dÅrfen ax, bx, cx, dx, si, di
+; Ihre Werte behalten mÅssen es, ds, bp, ss, cs
+;
+
+PROC    S3_HorLineInit  NEAR
+
+        push    ax
+        push    dx
+
+; Auf freie FIFO PlÑtze warten
+
+        S3_Wait 5
+
+; Vordergrund Farbe und Vordergrund Mix setzen
+
+        mov     ax, 27h                 ; Normal mode
+        S3_Out  FRGD_MIX
+
+        mov     al, [FillColor]
+        mov     ah, 0
+        S3_Out  FRGD_COLOR
+
+; Background Mix und Hintergrundfarbe setzen
+
+        mov     ax, 07h
+        S3_Out  BKGD_MIX
+
+        mov     al, [BkColor]
+        mov     ah, 0
+        S3_Out  BKGD_COLOR
+
+; Mask data selecting mix register provided by cpu
+
+        mov     ax, 0A080h
+        S3_Out  MULTIFUNC_CNTL
+
+; Und Ende
+
+        pop     dx
+        pop     ax
+        ret
+
+ENDP    S3_HorLineInit
+
+
+
+PROC    S3_HorLine      NEAR
+
+; Y Startwert fÅr spÑter auf den Stack
+
+        mov     di, ax                  ; Y
+
+; Muster holen
+
+        mov     si, ax                  ; Y
+        and     si, 7
+        mov     al, [FillPattern+si]
+        xchg    cx, bx                  ; cx = X1, bx = X2
+        rol     al, cl
+        xchg    cx, bx                  ; cx = X2, bx = X1
+        sub     cx, bx                  ; cx = Breite-1
+        mov     ah, al                  ; Muster in ax
+        mov     si, ax                  ; Muster in si
+
+; Warten bis 7 FIFO PlÑtze frei sind
+
+        S3_Wait 7
+
+; Startwert fÅr X/Y schreiben
+
+        mov     ax, bx                  ; X
+        S3_Out  CUR_X
+        mov     ax, di                  ; Y
+        add     ax, [PageOfs]
+        S3_Out  CUR_Y
+
+; MAJ_AXIS_PCNT = Max
+
+        mov     ax, cx                  ; cx = Max
+        S3_Out  MAJ_AXIS_PCNT
+
+; DESTX_DIASTP = 2 * (Min - Max)
+
+        neg     cx                      ; cx = -Max
+        mov     ax, cx                  ; ax = -Max
+        sal     ax, 1                   ; 2 * -Max
+        S3_Out  DESTX_DIASTP
+
+; DESTY_AXSTP = 2 * Min
+
+        sub     ax, ax                  ; Min = 0
+        S3_Out  DESTY_AXSTP
+
+        mov     ax, cx                  ; ax = -Max
+        S3_Out  ERR_TERM
+
+        mov     ax, 02337h
+        S3_Out  CMD
+
+; Muster raushauen
+
+        mov     ax, si
+        S3_Out  COLOR_CMP
+        ret
+
+ENDP    S3_HorLine
+
+
+

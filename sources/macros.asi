@@ -1,0 +1,103 @@
+; *****************************************************************************
+; *                                                                           *
+; *                     Macros fÅr den SVGA.BGI Treiber                       *
+; *                                                                           *
+; * (C) 1990-94 by                                                            *
+; * Ullrich von Bassewitz                                                     *
+; * ZwehrenbÅhlstra·e 33                                                      *
+; * D-72070 TÅbingen                                                          *
+; *                                                                           *
+; * E-Mail: uz@ibb.schwaben.de                                                *
+; *                                                                           *
+; *****************************************************************************
+
+
+
+MACRO   LOOPCX  Lbl
+
+        dec     cx
+        jnz     Lbl
+
+ENDM    LOOPCX
+
+
+
+MACRO   EnterProc  LocalSize
+IF      LocalSize
+        IF P80286
+                enter   LocalSize, 0
+        ELSE
+                push    bp
+                mov     bp, sp
+                sub     sp, LocalSize
+        ENDIF
+ELSE
+        push    bp
+        mov     bp, sp
+ENDIF
+ENDM
+
+
+MACRO   LeaveProc
+IF P80286
+        leave
+ELSE
+        mov     sp, bp
+        pop     bp
+ENDIF
+ENDM
+
+
+
+; Der folgende Macro berechnet die Adresse zu einer Position in X/Y und
+; setzt das Segment passend. Seg64 mu· ein aktives Segment enthalten,
+; ax enthÑlt den Y und bx den X-Wert. Das Macro zerstîrt ax und dx und
+; liefert in ax den Offset.
+; ds mu· auf das Codesegment zeigen (d.h. die Variable mÅssen verfÅgbar
+; sein).
+
+
+MACRO   CalcAdr
+LOCAL   @@L1
+
+        add     ax, [PageOfs]           ;; Korrektur fÅr Bildschirmseite
+        mul     [BytesPerLine]
+        add     ax, bx                  ;; Offset aufaddieren
+        adc     dl, 0                   ;; öberlauf
+        cmp     dl, [Seg64]             ;; Segment schon ok ?
+        je      @@L1                    ;; Stimmt schon
+        mov     [Seg64], dl             ;; Segment setzen
+        call    [SegSelect]             ;; und einstellen
+@@L1:
+
+ENDM
+
+
+
+MACRO   SetToDS Reg
+
+IF      VER3
+        mov     Reg, [DSeg]
+ELSE
+        push    cs
+        pop     Reg
+ENDIF
+
+ENDM
+
+
+
+
+MACRO   RESETCPU
+
+IF      P80386
+        P386N
+ELSEIF  P80286
+        P286N
+ELSE
+        P8086
+ENDIF
+
+ENDM
+
+

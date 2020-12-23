@@ -1,0 +1,25 @@
+Das Programm SVGADemo wurde mir dankenswerterweise von Herrn Jung-Merkelbach zur
+Verfgung gestellt. Beachten Sie bitte die entsprechenden Hinweise im Quelltext.
+
+Das Programm zeigt unter anderem, wie die Einbindung des Treibers als .OBJ-Datei
+vorzunehmen ist.
+
+Zur Neu-šbersetzung werden der Treiber SVGA.BGI sowie der SansSerif-Font als
+Object-Datei ben”tigt. Die Erzeugung der beiden OBBJ-Dateien geschieht mit den
+Befehlen:
+
+  bgiobj svga.bgi svga.obj _SVGA_driver
+
+und
+
+  bgiobj sans.chr sans.obj _sansserif_font
+
+
+Beachten Sie biite auch, daá Sie bei Verwendung des PRJ-Files
+
+  1. Borland C++ V 3.00 verwenden mssen.
+  2. Die eingestellten Verzeichnisse u.U. anpassen mssen
+     (Menuepunkt Options/Directories).
+
+
+

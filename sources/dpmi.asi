@@ -1,0 +1,117 @@
+; *****************************************************************************
+; *                                                                           *
+; *              DPMI-Unterprogramme fÅr den SVGA.BGI Treiber                 *
+; *                                                                           *
+; * (C) 1990-94                                                               *
+; * Ullrich von Bassewitz                                                     *
+; * ZwehrenbÅhlstra·e 33                                                      *
+; * D-72070 TÅbingen                                                          *
+; *                                                                           *
+; * E-Mail: uz@ibb.schwaben.de                                                *
+; *                                                                           *
+; *****************************************************************************
+
+
+; DPMI lÑuft nur ab 80286 aufwÑrts
+P286
+
+
+
+; Holt zu einem REAL-Mode Segment einen Deskriptor. Der Deskriptor ist ein
+; Daten-Deskriptor mit der Basis-Adresse des REAL-Mode Segments und dem
+; Limit 64KB.
+; Um daraus einen Code-Deskriptor zu machen ist die Funktion DPMI_MakeCodeDesc
+; aufzurufen.
+; Das REAL-Mode Segment wird in ax erwartet, der Deskriptor wird in bx
+; zurÅckgeliefert.
+; Die Funktion ist im Real-Mode transparent, d.h. es wird einfach das Segment
+; in bx zurÅckgeliefert.
+
+
+PROC    DPMI_SegToDesc  NEAR
+
+        cmp     [ProtMode], 0           ; Protected-Mode ?
+        jnz     @@L1                    ; Springe wenn ja
+        xchg    ax, bx                  ; Segment nach bx
+        ret                             ; Und Ende
+
+;
+
+@@L1:   push    ax                      ; Segment retten
+
+; LDT-Deskriptor belegen und nach bx
+
+        xor     ax, ax
+        mov     cx, 1
+        int     31h
+        xchg    ax, bx
+
+; Basis eintragen
+
+        pop     dx                      ; Segmentadresse
+        rol     dx, 4
+        mov     cl, dl
+        and     cx, 000Fh
+        and     dx, 0FFF0h
+
+        mov     ax, 7                   ; Set Segment Base Address
+        int     31h
+
+; Limit auf 64KB setzen
+
+        xor     cx, cx
+        mov     dx, 0FFFFh
+        mov     ax, 8                   ; Set Segment Limit
+        int     31h
+
+; Und Ende
+
+        ret
+
+ENDP    DPMI_SegToDesc
+
+
+
+
+; Funktion um einen Datendeskriptor in bx zu einem Codedeskriptor zu machen.
+; Der Deskriptor wird in bx erwartet und in bx zurÅckgeliefert.
+; Die Funktion ist Real-Mode transparent, d.h. im Real-Mode passiert einfach
+; nichts.
+
+PROC    DPMI_MakeCodeDesc       NEAR
+
+        cmp     [ProtMode], 0           ; Protected-Mode ?
+        jz      @@L9                    ; Springe wenn Nein
+        lar     cx, bx                  ; Access rights nach cx
+        xchg    ch, cl
+        and     cx, 00F0h               ; P/DPL/S lassen
+        or      cl, 1010b               ; Code/Non-Conform/Read
+        mov     ax, 9
+        int     31h
+@@L9:   ret
+
+ENDP    DPMI_MakeCodeDesc
+
+
+
+
+; Freigabe eines LDT-Selektors. Erwartet den Selektor in bx
+; Die Funktion ist Real-Mode transparent, d.h. im Real-Mode passiert einfach
+; nichts.
+
+
+PROC    DPMI_FreeDesc   NEAR
+
+        cmp     [ProtMode], 0           ; Protected-Mode ?
+        jz      @@L9                    ; Springe wenn Nein
+        mov     ax, 1
+        int     31h
+@@L9:   ret
+
+ENDP    DPMI_FreeDesc
+
+
+; TASM wieder auf die korrekte CPU rÅcksetzen
+
+RESETCPU
+

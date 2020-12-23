@@ -1,0 +1,95 @@
+; *****************************************************************************
+; *                                                                           *
+; *       Environment-Auswertung (Optionen) fÅr den SVGA.BGI Treiber          *
+; *                                                                           *
+; * (C) 1990-94                                                               *
+; * Ullrich von Bassewitz                                                     *
+; * ZwehrenbÅhlstra·e 33                                                      *
+; * D-72070 TÅbingen                                                          *
+; *                                                                           *
+; * E-Mail: uz@ibb.schwaben.de                                                *
+; *                                                                           *
+; *****************************************************************************
+
+
+
+; Sucht im Programm-Environment nach einem String "SVGAOPTS=". Wird dieser
+; gefunden, so wird anhand des Inhalts das Options-Word entsprechend gesetzt.
+; Bisherige Optionen:
+;
+;       F       = OpFastVesaOff
+;       V       = OpNoVesa
+;       3       = S3 Graphics Engine nicht benutzen
+;
+; ACHTUNG: Die DOS-Funktionen 51h und 62h liefern im Protected-Mode in bx
+; bereits einen Selektor! Genauso ist der Wert an Offset 2Ch im PSP-Segment
+; im Protected-Mode bereits ein Selektor!
+;
+
+PROC    GetOpts       NEAR
+
+        mov     ah, 30h
+        int     21h                     ; get dos version
+        xchg    ax, bx                  ; Version nach bx
+        mov     ax, 5100h               ; get PSP < DOS 3.0
+        cmp     bl, 3                   ; Version < 3 ?
+        jb      @@L1                    ; Springe wenn ja
+        mov     ax, 6200h               ; get PSP DOS >= 3.0
+@@L1:   int     21h
+        mov     dx, ds                  ; Datensegment retten
+        mov     ds, bx                  ; PSP Segment nach ds
+        mov     ds, [WORD ds:2Ch]       ; Environment-Segment holen
+
+        mov     es, dx                  ; es zeigt aufs Datensegment
+        xor     si, si
+        cld
+@@L2:   mov     di, OFFSET OptText      ; String
+        mov     cl, [BYTE es:di]        ; LÑnge nach cl
+        mov     ch, 0                   ; ... in cx
+        inc     di                      ; Zeiger hinter LÑngenbyte stellen
+        repz    cmpsb                   ; Eintrag gefunden ?
+        jz      @@L4                    ; Eintrag gefunden !
+        dec     si                      ; Sonst ein Zeichen zurÅck
+@@L3:   lodsb                           ; Und nach abschlie·ender 0 suchen
+        or      al, al                  ; 0 (= Ende) ?
+        jnz     @@L3                    ; Nein, weitersuchen
+        cmp     al, [BYTE si]           ; Zweite 0 (= Tabellenende) ?
+        jne     @@L2                    ; Nein, weitersuchen
+
+; Den Environment-Eintrag nicht gefunden
+
+        xor     di, di                  ; Optionen lîschen
+        jmp     @@L9
+
+; Environment-Eintrag gefunden
+
+@@L4:   xor     di, di                  ; Optionen
+@@L5:   lodsb                           ; Zeichen holen
+        or      al, al                  ; String-Ende ?
+        jz      @@L99                   ; Springe wenn ja
+        cmp     al, 'F'                 ; OpFastVESAOff ?
+        jnz     @@L6
+        or      di, OpFastVesaOff
+@@L6:   cmp     al, 'V'                 ; OpNoVesa ?
+        jnz     @@L7
+        or      di, OpNoVesa
+@@L7:   cmp     al, '3'
+        jnz     @@L8
+        or      di, opNoS3Hardware
+@@L8:   cmp     al, 'M'
+        jnz     @@L9
+        or      di, opUseVesaModes
+@@L9:   jmp     @@L5
+
+; Fertig, Options stehen in di
+
+@@L99:  mov     ds, dx                  ; Datensegment nach ds
+        mov     [Options], di           ; Optionen merken
+        ret
+
+ENDP    GetOpts
+
+
+
+
+

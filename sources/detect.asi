@@ -1,0 +1,612 @@
+; *****************************************************************************
+; *                                                                           *
+; *          Automatische Kartenerkennung fÅr den SVGA.BGI Treiber            *
+; *                                                                           *
+; * (C) 1990-94 by                                                            *
+; * Ullrich von Bassewitz                                                     *
+; * ZwehrenbÅhlstra·e 33                                                      *
+; * D-72070 TÅbingen                                                          *
+; *                                                                           *
+; * E-Mail: uz@ibb.schwaben.de                                                *
+; *                                                                           *
+; *****************************************************************************
+
+
+
+; -----------------------------------------------------------------
+;
+; Unterprogramme fÅr Autodetect
+;
+
+; VESACapabilities erwartet in es:di einen Zeiger auf den VESA-Puffer und liefert
+; in bh ein BitSet, was die unterstÅtzten Modi angibt.
+;
+
+PROC    VESACapabilities NEAR
+
+        push    ds
+
+; Das Segment von Vide_Mode_Ptr zu einem Selektor machen
+
+        mov     ax, [WORD es:di+16]             ; Video_Mode_Ptr, Segment
+        call    DPMI_SegToDesc
+        mov     ds, bx                          ; Segment nach ds
+
+        mov     si, [WORD es:di+14]             ; Offset nach si
+        mov     ch, M320x200                    ; Der Mode tut immer
+        cld
+
+; Modi der Reihe nach holen und checken
+
+@@L3:   lodsw
+        cmp     ax, 0100h                       ; Modus 640x400 ?
+        jnz     @@L4
+        or      ch, M640x400
+
+@@L4:   cmp     ax, 0101h                       ; Modus 640x480 ?
+        jnz     @@L5
+        or      ch, M640x480
+
+@@L5:   cmp     ax, 0103h                       ; Modus 800x600 ?
+        jnz     @@L6
+        or      ch, M800x600
+
+@@L6:   cmp     ax, 0105h                       ; Modus 1024x768 ?
+        jnz     @@L7
+        or      ch, M1024x768
+
+@@L7:   cmp     ax, 0107h                       ; Modus 1280x1024 ?
+        jnz     @@L8
+        or      ch, M1280x1024
+
+@@L8:   cmp     ax, 0FFFFh                      ; Ende der Liste ?
+        jnz     @@L3                            ; Nein, nÑchstes
+
+; Ende, alles geprÅft. Den Deskriptor wieder freigeben
+
+        mov     bx, ds                          ; Selektor nach bx
+        pop     ds                              ; Datensegment restaurieren
+        call    DPMI_FreeDesc                   ; Deskriptor-Freigabe
+
+; Und Ende
+
+        mov     bx, cx                          ; Mode-Bitset nach bh
+        ret
+
+ENDP    VESACapabilities
+
+
+; Unterprogramm zum prÅfen auf ETX000
+
+PROC    ETSub   NEAR
+
+        mov     al, 33h
+        mov     ch, ah          ; Testwert retten
+        out     dx, ax          ; Wert schreiben
+        mov     al, 33h         ; ???
+        out     dx, al
+        inc     dx
+        in      al, dx
+        and     al, 0Fh
+        dec     dx
+        cmp     al, ch
+        ret
+
+ENDP    ETSub
+
+
+; Testprogramme fÅr die Paradise VGA. PrÅft, ob die Segmente auch im
+; Textmodus umschaltbar sind (oder so .... ?!?!)
+;
+; CheckParadise kommt mit gesetztem Zero-Flag zurÅck bei Paradise und mit z=0
+; wenn keine Paradise.
+;
+; Wird aufgerufen mit
+;   es = 0b800h
+;   dx = Segment-Umschaltport
+;   al = Sequencer Registernummer fÅr Segment-Umschaltung (9)
+;   bx = Testwert (bh/bl)
+;
+
+PROC    CheckParadise NEAR
+
+        mov     si, bx                  ; Testwert merken
+        mov     ah, 1                   ; Page 1
+        out     dx, ax                  ; einstellen
+        xchg    bl, [BYTE es:di]        ; Testwert 1 setzen
+        mov     ah, 0                   ; Page 0
+        out     dx, ax                  ; einstellen
+        xchg    bh, [BYTE es:di]        ; Testwert 2 setzen
+        mov     cx, bx                  ; Wert merken
+        mov     bx, si                  ; Orginaler Testwert nach bx
+        mov     ah, 1                   ; Page 1
+        out     dx, ax                  ; einstellen
+        xor     bl, [BYTE es:di]        ; Wert prÅfen
+        mov     [BYTE es:di], cl        ; Orginalwert setzen
+        mov     ah, 0                   ; Page 0
+        out     dx, ax                  ; einstellen
+        xor     bh, [BYTE es:di]        ; Testwert 2 prÅfen
+        mov     [BYTE es:di], ch        ; Orginalwert setzen
+        or      bx, bx                  ; bx mÅsste jetzt 0 sein wg. XOR
+        ret
+
+ENDP    CheckParadise
+
+
+; Testprogramm zur Ermittlung des auf der Karte befindlichen Speichers.
+; Wird aufgerufen mit bl=Kartennummer und bh=Bitset mit unterstÅtzen Modi.
+; Schaltet in den Modus 0 und schreibt in die 64KB-BÑnke ein Muster.
+; Zerstîrt alle Register au·er ds, bx.
+
+PROC    Adjust NEAR
+Local   Card:WORD, VideoMode: BYTE = LocalSize
+
+        EnterProc LocalSize
+
+        mov     [Card], bx              ; Werte retten
+
+        mov     ax, 0F00h               ; Get Video Mode
+        call    Int10
+        mov     [VideoMode], al         ; Video-Mode retten
+
+        mov     ax, 13h
+        call    Int10
+
+        mov     bl, [BYTE LOW Card]
+        mov     bh, 0
+        shl     bx, 1
+        mov     bx, [SegSwitchTable+bx] ; Adresse der Umschaltroutine
+
+        mov     ax, 0Fh                 ; hîchstes Segment
+        mov     cx, 16                  ; 16 * 64KB fÅr 1MB
+        mov     es, [VideoSeg]
+        xor     di, di
+@@L1:   mov     [Seg64], al
+        call    bx                      ; Segment anwÑhlen
+        mov     [es:di], al
+        dec     ax                      ; = dec al
+        loop    @@L1
+
+        mov     cx, 16
+@@L2:   inc     ax
+        mov     [Seg64], al
+        call    bx
+        cmp     [es:di], al
+        jnz     @@L3
+        loop    @@L2
+
+; Ergebnis = Anzahl 64KB-BÑnke - 1 in al
+
+@@L3:   mov     bx, [Card]              ; Orginalwert
+        cmp     al, 15
+        je      @@L4
+        and     bh, NOT M1024x768       ; Modus ausblenden
+        cmp     al, 7
+        jae     @@L4
+        and     bh, NOT (M800x600 OR M640x480)
+@@L4:
+
+; Alten Videomodus wiederherstellen
+
+        mov     al, [VideoMode]         ; Orginaler Videomodus
+        mov     ah, 0                   ; = Setze Modus
+        push    bx                      ; Karte/Modi retten
+        call    Int10
+        pop     bx
+
+; Ende
+
+        LeaveProc
+        ret
+
+ENDP    Adjust
+
+
+
+; -----------------------------------------------------------------------------
+;
+; Autodetect
+; Der Versuch, die Video-Karte herauszufinden.
+; ZurÅckgeliefert wird in bl die Kartennummer (siehe Konstantenteil), in bh ein
+; BitSet, der Auskunft Åber die unterstÅtzten Auflîsungen gibt.
+;
+; Zerstîrt ziemlich alle Register, mit Ausnahme von CS, DS, SS, SP, BP
+;
+; Es wird in folgender Reihenfolge geprÅft:
+;
+;  * VGA
+;  * VESA
+;  * ATI
+;  * Video7
+;  * Everex
+;  * Trident
+;  * ET3000/ET4000
+;  * Paradise
+;  * Oak
+;
+
+PROC    AutoDetect      NEAR
+
+        push    bp
+
+; Generelle PrÅfung auf VGA
+
+        mov     ax, 1A00h
+        call    Int10
+        xor     bx, bx                  ; Karte und Capabilities in bl, bh
+        cmp     al, 1Ah                 ; VGA ?
+        jnz     AutoDetectEnd           ; Nein, keine VGA
+
+; Es ist eine VGA. Zuerst mal den Textmodus reinhauen
+
+        mov     ax, 3
+        call    Int10
+
+; PrÅfung auf VESA Karten
+
+        test    [Options], OpNoVesa     ; VESA-Test durchfÅhren ?
+        jnz     NoVesa                  ; Springe wenn Nein
+IF      Ver3
+        cmp     [ProtMode], 0           ; Sind wir im Protected-Mode ?
+        jz      @@L1                    ; Springe wenn Nein
+
+; VESA-Infos im Proteced-Mode holen. Es wird dazu die Information in eine
+; "RealModeRegs" Structure verpackt und der REAL-Mode Interrupt simuliert.
+; Das ist deshalb notwendig, weil Segmentregister Åbergeben werden.
+; Die weitere Verarbeitung ist dieselbe wie im REAL-Mode.
+
+        mov     [RMRegs.rAX], 4F00h     ; ax = 4F00h
+        mov     ax, [LowBufSeg]
+        mov     [RMRegs.rES], ax
+        xor     ax, ax
+        mov     [RMRegs.rDI], ax
+        mov     [RMRegs.rSP], ax
+        mov     [RMRegs.rSS], ax        ; Use DPMI Stack
+        mov     bx, 0010h               ; Interrupt-Nr.
+        xchg    ax, cx                  ; cx = 0
+        mov     ax, 0300h
+        push    ds
+        pop     es
+        lea     di, [RMRegs]            ; Zeiger auf Struct in es:di
+        int     31h                     ; Simulate real mode interrupt
+        mov     ax, [RMRegs.rAX]
+        mov     es, [LowBufSel]
+        xor     di, di
+        jmp     @@L2
+
+; VESA-Infos im Real-Mode holen.
+
+@@L1:   xor     di, di
+        mov     es, [LowBufSeg]         ; es:di --> Reservierter Speicher
+        mov     ax, 4F00h               ; VESA-Code
+        call    Int10
+ELSE
+
+; VESA-Infos im Real-Mode holen.
+
+@@L1:   lea     di, [LowBuf]
+        SetToDS es                      ; es:di --> Low memory puffer
+        mov     ax, 4F00h               ; VESA-Code
+        call    Int10
+
+ENDIF
+
+; Anhand der Infos prÅfen, ob ein VESA-Interface vorhanden ist.
+
+@@L2:   cmp     ax, 004Fh               ; VESA ?
+        jnz     NoVESA                  ; Nein
+        cmp     [WORD es:di], 'EV'
+        jnz     NoVESA
+        cmp     [WORD es:di+2], 'AS'
+        jnz     NoVESA
+        call    VESACapabilities        ; Mîgliche Modi holen
+        mov     bl, VESAVGA             ; Karte setzen
+        jmp     AutoDetectEnd           ; Und fertig
+
+; Keine VESA-Karte, S3 prÅfen
+
+NoVESA: mov     dx, 03D4h
+        mov     ax, 04838h
+        out     dx, ax
+        inc     dx
+        in      al, dx
+        and     al, 48h
+        cmp     al, 48h
+        jnz     NoS3
+        dec     dx
+        mov     al, 30h
+        out     dx, al
+        inc     dx
+        in      al, dx
+        cmp     al, 81h
+        jb      NoS3
+        cmp     al, 0C2h
+        ja      NoS3
+        mov     bx, (M320x200 or M640x480) * 256 + S3VGA
+        dec     dx
+        mov     al, 36h                 ; CONFG_REG1
+        out     dx, al
+        inc     dx
+        in      al, dx
+        and     al, 0E0h                ; Memory size
+        cmp     al, 0E0h                ; 0.5MB? Kann nur 640x480
+        jz      IsS3
+        or      bh, M800x600 or M1024x768
+        cmp     al, 0C0h                ; 1MB? Kann 800x600 + 1024x768
+        jz      IsS3
+        or      bh, M1280x1024          ; 2MB kann auch 1280x1024
+IsS3:   jmp     AutoDetectEnd
+
+; Keine S3-Karte, als nÑchstes ATI prÅfen. Die ATI besitzt einen
+; Identifikationsstring bei 0C000h:0031h und einen VGA-Identifikationsstring
+; bei 0C000h:0040h.
+
+NoS3:   mov     es, [SegC000]
+        cld
+        mov     di, 31h                 ; Offset ID im BIOS
+        mov     si, Offset ATI_Ident
+        mov     cx, SIZE ATI_Ident      ; LÑnge des Strings
+        repe    cmpsb                   ; stimmt der String ?
+        jne     NoATI
+        cmp     [WORD es:40h], 3133h    ; ATI VGA ('31') ?
+        jnz     NoATI                   ; Nein
+        mov     si, OFFSET ATI_Modes
+        mov     bx, (M320x200) * 256 + ATIVGA
+@@L3:   lodsb                           ; Mode-Nr holen
+        or      al, al                  ; Ende?
+        jz      AutoDetectEnd           ; Springe wenn ja
+        push    ds
+        push    bx
+        push    si
+        mov     ah, 12h
+        mov     bx, 5506h
+        mov     bp, 0FFFFh
+        int     10h
+        pop     si
+        pop     bx
+        pop     ds
+        lodsb                           ; Modus Bitmask
+        inc     bp                      ; bp == -1?
+        jz      @@L3                    ; Springe wenn ja
+        or      bh, al                  ; Modus reinodern
+        jmp     @@L3                    ; und nÑchster
+
+; Es ist auch keine ATI VGA. Als nÑchstes auf Video7 prÅfen.
+
+NoATI:  mov     ax, 6F00h
+        xor     bx, bx
+        call    Int10
+        cmp     bx, 'V7'                ; Video7 ?
+        jnz     NoV7                    ; Nein
+        mov     ax, 6F07h               ; Get Memory Configuration
+        call    Int10
+        and     ah, 7Fh                 ; Bit fÅr V/D-RAM lîschen
+        mov     bh, M640x400 OR M320x200; Das kann die Karte immer
+        cmp     ah, 1                   ; 1 256KB-Bank bestÅckt
+        jbe     V71                     ; ja
+        or      bh, M640x480            ; Das kann die Karte mit 512 KB
+V71:    mov     bl, Video7VGA
+        jmp     AutoDetectEnd
+NoV7:
+
+; Es ist keine Video7-Karte. Auf Everex prÅfen.
+
+        mov     ax, 7000h
+        xor     bx, bx
+        call    Int10
+        cmp     al, 70h
+        jnz     NoEv                    ; Keine Everex
+        mov     bl, EverexVGA
+        mov     bh, M320x200 OR M640x350 OR M640x400    ; Das kann die Karte immer
+        and     ch, 0C0h                ; Speicher > 256 KB
+        jz      Ev1
+        or      bh, M640x480 OR M800x600        ; Modi mit 512 KB
+Ev1:    and     dx, 0FFF0h              ; Karte prÅfen
+        cmp     dx, 6780h               ; Everex 678 ?
+        jz      Ev2
+        cmp     dx, 2360h
+        jnz     Ev3
+Ev2:    mov     bl, TridentVGA          ; Everex 768 = Trident 8800 !!
+Ev3:    jmp     AutoDetectEnd
+NoEv:
+
+; Es ist keine Everex-Karte. PrÅfen auf Trident.
+
+        mov     dx, 03C4h
+        mov     al, 0Bh
+        out     dx, al
+        inc     dx
+        in      al, dx                  ; Versionsnummer holen
+        cmp     al, 15
+        ja      NoTri
+        cmp     al, 2
+        jb      NoTri
+        mov     bl, TridentVGA          ; Es ist eine Trident
+        mov     bh, M320x200+M640x400+M640x480+M800x600+M1024x768
+        call    Adjust                  ; Anpassen an Speicherbelegung
+        jmp     AutoDetectEnd
+NoTri:
+
+; Es ist keine Trident, prÅfe auf ETX000
+
+                                        ; So tun als ob ET3000
+        mov     bx, (M320x200+M640x350+M640x480+M800x600)*256 + ET3000VGA
+        mov     dx, 3D4h                ; Orginalen Wert des Registers
+        mov     al, 33h                 ; 33h holen und in cl merken
+        out     dx, al
+        inc     dx
+        in      al, dx
+        dec     dx
+        mov     cl, al
+
+        mov     ax, 0A33h
+        call    ETSub
+        jnz     IsET3                   ; Keine ET4000
+
+        mov     ax, 0533h
+        call    ETSub
+        jnz     IsET3                   ; Keine ET4000
+
+        mov     al, 33h
+        mov     ah, cl                  ; Orginalwert
+        out     dx, ax                  ; wiederherstellen
+
+        mov     bx, (M320x200+M640x350+M640x400+M640x480+M800x600+M1024x768)*256 + ET4000VGA
+
+        mov     dx, 3BFh
+        mov     al, 03h
+        out     dx, al
+        mov     dl, 0D8h                ; dx = 3D8h
+        mov     al, 0A0h
+        out     dx, al
+        jmp     SHORT IsET4
+
+; Nach der Unterscheidung ET3000/ET4000 noch prÅfen, ob sich das Segment-Select
+; Register an der richtigen Stelle befindet. Ist es nicht schreib-/lesbar, so
+; liegt - egal wie der vorige Test ausging - keine ETX000 vor.
+
+IsET3:  mov     al, 33h
+        mov     ah, cl                  ; Orginalwert
+        out     dx, ax                  ; wiederherstellen
+
+IsET4:  mov     dx, 03CDh               ; Segment-Select der ET3000/4000
+        in      al, dx
+        mov     si, ax                  ; Orginalwert merken
+
+        mov     cx, 0FFh                ; Mit $FF anfangen
+ETLp:   mov     al, cl                  ; Wert
+        out     dx, al                  ; ... rausschreiben
+        jmp     @@ET1                   ; Kleine Pause
+@@ET1:  in      al, dx                  ; Registerwert holen
+        cmp     al, cl                  ; Korrekt ?
+        jnz     NoET                    ; Nein, keine ETX000
+
+        mov     ax, si                  ; Orginalwert
+        out     dx, al                  ; ...wiederherstellen
+
+        cmp     bl, ET3000VGA
+        je      @@ET2
+        call    Adjust                  ; Anpassen an Speicher auf Karte
+@@ET2:  jmp     AutoDetectEnd
+NoET:
+
+; Es ist keine ETX000 VGA, Paradise prÅfen
+; Orginale Paradise VGA's haben bei C000:007D einen String "VGA="
+; (laut Ferraro). Zuerst diesen prÅfen, wenn das nicht hinhaut,
+; RegisterprÅfung wie in DETECT durchfÅhren.
+;
+
+        mov     es, [SegC000]
+        cld
+        mov     di, 7Dh                 ; Offset ID im BIOS
+        mov     si, OFFSET Paradise_Ident
+        mov     cx, SIZE Paradise_Ident ; LÑnge des Strings
+        repe    cmpsb                   ; stimmt der String ?
+        je      IsPar                   ; Ja, ist Paradise
+
+; Kein Ident-String. Schaltbarkeit der 4KB-Kacheln prÅfen.
+
+        mov     dx, 3CEh
+        mov     al, 09h
+        out     dx, al
+        inc     dx
+        in      al, dx
+        dec     dx
+        or      al, al
+        jnz     NoPar
+        mov     ax, 050Fh               ; Extended-Register der Paradise freigeben
+        out     dx, ax
+
+        mov     es, [SegB800]
+        xor     di, di                  ; Adresse 0
+        mov     al, 09h                 ; Sequenzer-Register fÅr SegSwitch
+
+        mov     bx, 'An'                ; Testwert 1
+        call    CheckParadise           ; prÅfen
+        jnz     NoPar                   ; Keine Paradise
+        mov     bx, 'Lo'                ; Testwert 2
+        call    CheckParadise           ; prÅfen
+        jnz     NoPar                   ; Keine Paradise
+
+IsPar:  mov     bx, (M320x200 OR M640x400 OR M640x480 OR M800x600)*256 + ParadiseVGA
+;       call    Adjust                  ; Anpassen an Speicher auf Karte
+        jmp     AutoDetectEnd
+NoPar:
+
+; Es ist keine Paradise, Oak prÅfen
+
+        mov     dx, 03deh               ; Special-Port Oak
+        in      al, dx                  ; lesen
+        and     al, 0E0h
+        cmp     al, 060h                ; Oak ?
+        jnz     NoOak                   ; Nein
+        mov     bx, (M320x200 OR M640x400)*256 + OakVGA
+        mov     al, 0Dh
+        out     dx, al
+        inc     dx
+        jmp     @@Oak1
+@@Oak1: in      al, dx
+        test    al, 80h                 ; 512 KB ?
+        jz      @@Oak2                  ; Springe wenn Nein
+        or      bh, M800x600            ;
+@@Oak2: jmp     AutoDetectEnd           ; Fertig
+
+NoOak:
+
+; unbekannte Karte
+
+        mov     bx, (M320x200 * 256) + GenericVGA
+
+AutoDetectEnd:
+        pop     bp
+        ret
+
+ENDP    AutoDetect
+
+
+; -------------------------------------------------------------------------
+;
+; Autodetect-Routinen fÅr eine bestimmte Auflîsung. Diese ruft AutoDetect
+; auf, um die Karte und die mîglichen Modi zu ermitteln. Dann wird in der
+; Tabelle nach einem passenden Modus gesucht. Die Routine liefert in di
+; einen Zeiger auf die DST des gefundenen Modus, wobei im Stat-Feld ein
+; Fehler eingetragen sein kann, wenn kein passender Modus gefunden wurde.
+;
+; Die Routine sucht von oben herunter die Modus-Tabelle ab, damit der Modus
+; mit der hîchsten Auflîsung gefunden wird, falls der BitSet in al mehrere
+; Auflîsungen enthÑlt. Dazu mu· die Modus-Tabelle aber (innerhalb einer Karte)
+; nach aufsteigenden Auflîsungen sortiert sein.
+
+PROC    AutoDetectMode NEAR
+
+        push    ax                      ; Modus in al retten
+        call    AutoDetect              ; Karte in bl, Modus in bh
+        pop     ax
+        mov     di, OFFSET ModeTableEnd - SIZE TMode       ; Zeiger auf Tabellenende
+        and     al, bh                  ; Modus ausmaskieren
+
+; In der Mode-Tabelle suchen
+
+@@ModeLoop:
+        cmp     [(TMode di).CardType], bl       ; Passende Karte ?
+        jnz     @@L1                            ; Nein
+        test    al, [(TMode di).Capabilities]   ; Passender Modus ?
+        jnz     @@ModeFound                     ; Modus passt auch
+@@L1:   sub     di, SIZE TMode                  ; NÑchster Eintrag
+        cmp     di, OFFSET ModeTable            ; Tabellenende ?
+        jnb     @@ModeLoop
+
+; Keinen passenden Modus gefunden
+
+        mov     di, OFFSET ModeTable            ; VGA320x200 nehmen
+        mov     [DST.Stat], grNotDetected
+
+; Zeiger auf den Modus-Eintrag in di rÅckliefern
+
+@@ModeFound:
+        ret
+
+ENDP    AutoDetectMode
+
+
+

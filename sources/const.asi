@@ -1,0 +1,118 @@
+; *****************************************************************************
+; *                                                                           *
+; *                   Konstanten fÅr den SVGA.BGI Treiber                     *
+; *                                                                           *
+; * (C) 1990-94                                                               *
+; * Ullrich von Bassewitz                                                     *
+; * ZwehrenbÅhlstra·e 33                                                      *
+; * D-72070 TÅbingen                                                          *
+; *                                                                           *
+; * E-Mail: uz@ibb.schwaben.de                                                *
+; *                                                                           *
+; *****************************************************************************
+
+
+;---------------------------------------------------
+; Allgemeine Konstanten
+
+MaxColors               =       256             ; 256 Farben zulÑssig
+AvailColors             =       16              ; 16 verfÅgbar
+ModeCount               =       44              ; Bisher unterstÅtzte Modi
+MaxAutoMode             =       6               ; Maximaler Autodetect-Modus
+
+EmptyFill               =       0
+SolidFill               =       1
+
+; Fehlercodes
+
+grOk                    =   0
+grNoInitGraph           =  -1
+grNotDetected           =  -2
+grFileNotFound          =  -3
+grInvalidDriver         =  -4
+grNoLoadMem             =  -5
+grNoScanMem             =  -6
+grNoFloodMem            =  -7
+grFontNotFound          =  -8
+grNoFontMem             =  -9
+grInvalidMode           = -10
+grError                 = -11
+grIOerror               = -12
+grInvalidFont           = -13
+grInvalidFontNum        = -14
+grInvalidDeviceNum      = -15
+
+
+; --------------------------------------------------------------
+;
+; Konstanten fÅr BGI-Treiber Funktionen
+;
+
+FuncInstall             =       0
+FuncInit                =       2
+FuncClear               =       4
+FuncPost                =       6
+FuncMove                =       8
+FuncDraw                =      10
+FuncVect                =      12
+FuncFillPoly            =      14
+FuncBar                 =      16
+FuncPatBar              =      18
+FuncArc                 =      20
+FuncPieslice            =      22
+FuncFilledEllipse       =      24
+FuncPalette             =      26
+FuncAllPalette          =      28
+FuncColor               =      30
+FuncFillStyle           =      32
+FuncLineStyle           =      34
+FuncTextStyle           =      36
+FuncText                =      38
+FuncTextSize            =      40
+FuncReserved1           =      42
+FuncFloodFill           =      44
+FuncGetPixel            =      46
+FuncPutPixel            =      48
+FuncBitMapUtil          =      50
+FuncSaveBitMap          =      52
+FuncRestoreBitMap       =      54
+FuncSetClip             =      56
+FuncColorQuery          =      58
+
+; --------------------------------------------------------------
+;
+; Konstanten fÅr Karten (fÅr Autodetect)
+;
+
+GenericVGA              =  0            ; stinknormale VGA
+ET3000VGA               =  1            ; ET3000 Chipsatz
+ET4000VGA               =  2            ; ET4000 Chipsatz
+TridentVGA              =  3            ; Trident 8900 Chipsatz
+Video7VGA               =  4            ; Video7 1024i oder VEGA VGA
+ParadiseVGA             =  5            ; Paradise VGA
+ATIVGA                  =  6            ; ATI VGAWonder
+EverexVGA               =  7            ; Everex
+OakVGA                  =  8            ; OAK
+S3VGA                   =  9            ; S3 Chipsatz
+VESAVGA                 =  10           ; VGA unterstÅtzt VESA-Standard
+
+; Konstanten fÅr die wichtigsten Videomodi. Kînnen zu einem BitSet zusammen-
+; gefÅgt werden um die mîglichen Modi einer Karte zu beschreiben.
+
+M320x200                = 0001h
+M640x350                = 0002h
+M640x400                = 0004h
+M640x480                = 0008h
+M800x600                = 0010h
+M1024x768               = 0020h
+M1280x1024              = 0040h
+MAll                    = 007Fh         ; Alle obigen Modi
+
+
+; Konstanten fÅr mîgliche Optionen, die Åber's Environment festgelegt werden.
+
+OpFastVesaOff           = 0001h         ; Keine PM VESA-Aufrufe
+OpNoVesa                = 0002h         ; VESA-Treiber nicht verwenden
+OpNoS3Hardware          = 0004h         ; S3 Graphics Engine nicht verwenden
+OpUseVesaModes          = 0008h         ; VESA-Modusnummern verwenden
+

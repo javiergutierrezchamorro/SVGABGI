@@ -1,0 +1,686 @@
+
+                     SVGA.BGI - BGI Treiber fÅr Super-VGAs
+
+                           Version 3.5 vom Mai 1995
+
+                    (C) 1990-1995 by Ullrich von Bassewitz
+                            ZwehrenbÅhlstra·e 33
+                              D-72070 TÅbingen
+
+                          E-Mail: uz@ibb.schwaben.de
+
+
+
+
+
+
+0. Vorwort
+
+Alle Rechte an der hier beschriebenen Software sowie der Dokumentaton liegen
+beim Autor. Die Verwendung von SVGA.BGI in eigenen Programmen ist frei, sowohl
+fÅr private als auch fÅr kommerzielle Zwecke. Beachten Sie aber bitte folgendes:
+
+    Da die Verwendung von SVGA.BGI kostenlos ist, erfolgt der Einsatz auf
+    auschlie·liche Gefahr des Anwenders. Jede Haftung fÅr direkte, indirekte,
+    verursachte oder gefolgte SchÑden, die durch die Verwendung von SVGA.BGI
+    entstehen kînnen, ist ausgeschlossen.
+
+SVGA.BGI darf unter folgenden Bedingungen beliebig weitergegeben werden:
+
+  * Die Weitergabe geschieht im kompletten Paket mit Dokumentation und
+    Beispielprogrammen.
+  * Die Weitergabe geschieht kostenlos. Dies bedeutet insbesondere, da· der
+    Treiber nicht ohne meine vorherige schriftliche Genehmigung auf CD-ROMS
+    vertrieben werden darf, genauso sind Mailboxen/FTP-Server ausgeschlossen,
+    bei denen der Zugang zum Treiber nicht frei fÅr jedermann ist.
+
+
+
+1. öbersicht
+
+SVGA.BGI ist ein BGI-Treiber fÅr Super-VGAs. UnterstÅtzt werden die meisten der
+auf dem Markt erhÑltlichen VGAs.
+
+SVGA.BGI
+
+  * unterstÅtzt Modi mit 256 Farben und Auflîsungen bis 1280*1024,
+
+  * unterstÅtzt beide Borland Compiler, also Turbo-Pascal und Borland-C++,
+
+  * untertÅtzt alle im "Device Drivers Toolkit" angegebenen Funktionen
+    inclusive FloodFill,
+
+  * ist in vielen Funktionen wesentlich schneller als die Standard-
+    Treiber,
+
+  * kommt auch in einer DPMI-Version,
+
+  * kommt mit diversen Demo-Programmen,
+
+  * und darf frei weitergegeben werden solange mein Copyright nicht
+    entfernt wird und solange dies komplett und unverÑndert geschieht.
+
+
+
+2. Allgemeines
+
+2.1. UnterstÅtzte Karten
+
+Bisher werden folgende Karten unterstÅtzt:
+
+  * Karten mit Tseng ET3000-Chipsatz. Diese Karten sind von verschiedenen
+    Herstellern erhÑltlich.
+
+  * Karten mit Tseng ET4000-Chipsatz. Diese Karten sind von verschiedenen
+    Herstellern erhÑltlich.
+
+  * Karten mit Trident 8800/8900-Chipsatz. Diese Karten sind von
+    verschiedenen Herstellern erhÑltlich.
+
+  * Video7-Karten vom Hersteller Headland.
+
+  * Die VGA Wonder von ATI.
+
+  * Karten mit Paradise-Chipsatz. Diese Karten sind von verschiedenen
+    Herstellern erhÑltlich.
+
+  * S3 Karten. Ab Version 3.4 werden auch die Beschleuniger-Funktionen des
+    Chipsatzes unterstÅtzt.
+
+  * Karten die den VESA-Standard erfÅllen bzw. ein VESA-Interface
+    bereitstellen.
+
+
+
+2.2. Beispielprogramme
+
+Aufgrund der hîheren Verbreitung sind alle Beispiele in der folgenden
+Beschreibung in Turbo-Pascal programmiert.
+
+
+
+3. Eigenschaften
+
+Der Treiber unterstÅtzt alle im Device Drivers Toolkit angegebenen Funktionen.
+Aufgrund vorhandener Hardware (SpeicherbestÅckung oder Chipsatz) kînnen sich
+jedoch kleinere EinschrÑnkungen ergeben (zum Beispiel bei der UnterstÅtzung
+mehrerer Bildschirmseiten).
+
+Ich habe mir MÅhe gegeben, die Funktionen nicht nur korrekt, sondern soweit
+mîglich auch schnell zu implementieren - letzteres ist hauptsÑchlich bei den
+Funktionen der Fall, an denen ich selbst Interesse hatte, also z.B. das Ziehen
+von Linien und die Block-Funktionen.
+
+
+
+4. Die Modi des Treibers
+
+Den einzelnen Modi sind folgende Konstanten zugeordnet:
+
+Modus-Nummer Auflîsung
+---------------------------------------------------------------------
+     0       320*200. Dieser Modus wird von jeder VGA-Karte
+             beherrscht, also nicht nur von den vom Treiber
+             unterstÅtzten Karten.
+     1       Autodetect. Verwendet die hîchste Auflîsung der Karte.
+             Siehe den entsprechenden Abschnitt.
+     2       640*400, Autodetect, siehe Abschnitt "Autodetect".
+     3       640*480, Autodetect, siehe Abschnitt "Autodetect".
+     4       800*600, Autodetect, siehe Abschnitt "Autodetect".
+     5       1024*768, Autodetect, siehe Abschnitt "Autodetect".
+     6       1280*1024, Autodetect, siehe Abschnitt "Autodetect".
+     7       640*350, ET3000.
+     8       640*480, ET3000.
+     9       800*600, ET3000.
+     10      640*350, ET4000.
+     11      640*400, ET4000.
+     12      640*480, ET4000.
+     13      800*600, ET4000.
+     14      1024*768, ET4000.
+     15      640*400, Trident 8900
+     16      640*480, Trident 8900
+     17      800*600, Trident 8900.
+     18      1024*768, Trident 8900.
+     19      640*400, Video7.
+     20      640*480, Video7.
+     21      800*600, Video7.
+     22      640*400, ATI VGA Wonder.
+     23      640*480, ATI VGA Wonder.
+     24      800*600, ATI VGA Wonder.
+     25      1024*768, ATI VGA Wonder.
+     26      640*400, Paradise.
+     27      640*480, Paradise.
+     28      800*600, Paradise.
+     29      640*350, Everex.
+     30      640*400, Everex.
+     31      640*480, Everex.
+     32      800*600, Everex.
+     33      640*400, Oak.
+     34      800*600, Oak.
+     35      640*480, S3.
+     36      800*600, S3.
+     37      1024*768, S3.
+     38      1280*1024, S3.
+     39      640*400, VESA.
+     40      640*480, VESA.
+     41      800*600, VESA.
+     42      1024*768, VESA.
+     43      1280*1024, VESA.
+
+Je nach Karte und Einstellung kînnen vor allem die Modi mit hîheren Auflîsungen
+interlaced oder non-interlaced dargestellt werden. Bitte stellen Sie sicher, da·
+der entsprechende Modus mit den FÑhigkeiten Ihres Monitors korrespondiert
+(Festfrequenzmonitore kînnen durch falsche Ablenkfrequenzen zerstîrt werden).
+
+
+
+5. Die Einbindung des Treibers
+
+Die Einbindung des Treibers erfolgt Åber die Prozedur InstallUserDriver. Der
+erste Parameter von InstallUserDriver ist der Name des Treibers (ohne die
+Endung), der zweite Parameter ist ein Zeiger auf eine Detect-Routine, die die
+Hardware auf Vorhandensein der entsprechenden Karte testen kann. Anstelle einer
+entsprechenden Routine kînnen die Autodetect-Modi des Treibers (siehe Abschnitt
+"Autodetect") verwendet werden.
+
+Ist der von InstallUserDriver zurÅckgegebene Integer-Wert < 0, so ist ein Fehler
+aufgetreten, ist er grî·er, so stellt er in der Version 6.0 direkt, in den
+Versionen 5.0 und 5.5 nach Addition von 5 die Nummer des Treibers dar. Das
+folgende Beispiel zeigt, wie eine Einbindung in Turbo-Pascal aussehen kann.
+
+
+        VAR
+          GraphMode, GraphDriver : INTEGER;
+
+        BEGIN
+          { Grafiktreiber installieren }
+          GraphDriver := InstallUserDriver ('SVGA', NIL);
+          IF (GraphDriver < 0) THEN BEGIN
+            { Fehlerbehandlung }
+            ...
+          END;
+
+          { Bei Versionen vor TP 6.0 diese Zeile hinzufÅgen}
+          { Inc (GraphDriver, 5); }
+
+          { GewÅnschten Modus festlegen und Grafik einschalten }
+          GraphMode := 0;
+          InitGraph (GraphDriver, GraphMode, PathToDriver);
+          ...
+        END;
+
+Soll der Treiber als OBJ-Datei in das ausfÅhrbare Programm eingebunden
+werden, so mÅssen folgende Schritte in genau dieser Reihenfolge
+durchgefÅhrt werden:
+
+  * "Installierung" des Treibers mit InstallUserDriver. Diese Prozedur
+    teilt dem Grafik-Kernel mit, da· es einen Treiber mit dem Namen
+    "SVGA" gibt.
+
+  * "Registrierung" des Treibers mit RegisterBGIDriver. Diese Prozedur
+    teilt dem Grafik-Kernel mit, da· der Treiber (falls er verwendet
+    werden sollte) nicht von Platte zu laden ist, sondern da· er sich
+    bereits im Speicher befindet.
+
+  * Einschalten des Grafikmodus mit InitGraph.
+
+Der folgende Code-Ausschnitt zeigt beispielhaft, wie die Einbindung erfolgen
+kann. Es wird vorausgesetzt, da· der Treiber zuvor mittels
+
+        BINOBJ SVGA.BGI SVGA.OBJ SVGADRIVER
+
+in eine OBJ-Datei umgewandelt worden ist (C-Programmierer: Das entsprechende
+Programm hei·t BGIOBJ und ist etwas komplizierter zu bedienen. Es mÅssen beim
+Aufruf alle Parameter angegeben werden! Dazu einfach BGIOBJ ohne Parameter
+aufrufen und nach Hilfestellung vorgehen.)
+
+
+    { Der Treiber als Prozedur deklariert }
+    PROCEDURE SVGADriver; FAR; EXTERNAL;
+
+    { Einbinden des Treibers }
+    {$L SVGA.OBJ}
+
+    VAR
+      GraphDriver : INTEGER;          { Nummer des Treibers }
+
+
+    PROCEDURE Install;
+    { FÅhrt die Installation des Treibers durch }
+    BEGIN
+      GraphDriver := InstallUserDriver ('SVGA', NIL);
+      IF (GraphDriver < 0) THEN Error;
+      IF (RegisterBGIDriver (@SVGADriver) < 0) THEN Error;
+    END;
+
+
+    BEGIN                         { Hauptprogramm }
+      ....
+      Install;
+      GraphMode := 1;             { Autodetect }
+      InitGraph (GraphDriver, GraphMode, '');
+      { Fehlerauswertung muss folgen }
+      ....
+    END.
+
+Falls Sie Schwierigkeiten beim Ansprechen der Karte haben sollten, prÅfen Sie
+bitte zuerst, ob die mitgelieferten Grafik-Programme (siehe README-Datei) bei
+Ihnen laufen. Ist das der Fall, dann vergleichen Sie bitte Ihre Initialisierung
+mit der in den mitgelieferten Quelltexten. Falls Sie Schwierigkeiten mit den
+Autodetect-Modi haben sollten, lesen Sie bitte Abschnitt "Autodetect".
+
+
+
+6. Das Ansprechen der Farben
+
+Der Treiber initialisiert beim Einschalten der Grafik die Farben 0-15 mit
+Standardwerten. Diese Farben entsprechen den Farben in den 16-Farb-Modi. Alle
+weiteren Farbwerte werden vom Treiber nicht belegt, sie enthalten Werte, die das
+Video-BIOS bei der Initialisierung setzt und kînnen vom Anwender definiert
+werden. Zur Einstellung der Farben ist ausschlie·lich die Prozedur SetRGBPalette
+zu verwenden. Hierbei ist darauf zu achten, da· die untersten 2 Bit der
+Åbergebenen RGB-Werte nicht belegt sind. GÅltige Werte sind also 0, 4, 8... (der
+Grund dafÅr ist die KompatibilitÑt mit der 8514 Karte von IBM).
+
+
+
+7. Einzelne BGI-Funktionen
+
+7.1. FillPoly
+
+Der Treiber emuliert die Funktion FillPoly nicht (wie die meisten anderen
+BGI-Treiber fÅr Grafik-Karten), sondern fÅhrt die Operation selber aus. Da der
+Treiber einen anderen Algorithmus als das Grafik-Kernel verwendet kann sich das
+Ergebnis der Funktion in ExtremfÑllen leicht unterscheiden.
+
+
+
+7.2. FloodFill
+
+Die Funktion FloodFill ist verfÅgbar. U.U. kann es bei den hohen Auflîsungen
+und komplexen FÅllmustern notwendig sein, die Grî·e des Puffers zu erhîhen
+(Funktion SetGraphBufSize).
+
+
+
+7.3. PutImage
+
+PutImage unterstÅtzt ab Version 3.21 (d.h. eigentlich schon frÅher, aber ab
+seit dieser Version offiziell) einen zusÑtzlichen Modus namens TransPut. In
+diesem Modus werden die Pixel genauso Åbertragen wie bei CopyPut, mit Ausnahme
+von Pixel der Farbe 0, diese werden nicht Åbertragen. Mit Hilfe von TransPut
+lassen sich "durchscheinende" Bilder auf den Bildschirm bringen, die
+Programmierung von Sprites wird vereinfacht. Die Konstante fÅr TransPut hat den
+Wert 5.
+
+Beispiel fÅr den Aufruf:
+
+        CONST
+          TransPut = 5;
+
+          ...
+          PutImage (100, 100, P^, TransPut);
+          ...
+
+
+
+7.4. SetActivePage und SetVisualPage
+
+Ab Version 3.50 wurde die Funktion der Seitenumschaltung auf VESA-Karten
+erweitert. Die Karte bzw. der Treiber mu· dazu die Version 1.2 des Standards
+unterstÅtzen. Diese Funktion war bisher nur fÅr wenige Karten verfÅgbar.
+Die folgende Tabelle gibt einen Anhaltspunkt(!), wieviele Seiten bei der
+jeweiligen SpeicherbestÅckung unterstÅtzt werden, die genaue Anzahl ist vom
+Chipsatz und vom Treiber abhÑngig.
+
+   ⁄ƒƒƒƒƒƒƒƒƒƒƒ¬ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒø
+   ≥ Auflîsung ≥               Seitenzahl bei              ≥
+   ≥           ≥    512KB           1MB           2MB      ≥
+   √ƒƒƒƒƒƒƒƒƒƒƒ≈ƒƒƒƒƒƒƒƒƒƒƒƒƒ¬ƒƒƒƒƒƒƒƒƒƒƒƒƒƒ¬ƒƒƒƒƒƒƒƒƒƒƒƒƒƒ¥
+   ≥  320*200  ≥     2       ≥       4      ≥      8       ≥
+   ≥  640*400  ≥     2       ≥       4      ≥      8       ≥
+   ≥  640*480  ≥     1       ≥       2      ≥      4       ≥
+   ≥  800*600  ≥     1       ≥       2      ≥      4       ≥
+   ≥ 1024*768  ≥     0       ≥       1      ≥      2       ≥
+   ≥ 1280*1024 ≥     0       ≥       0      ≥      1       ≥
+   ¿ƒƒƒƒƒƒƒƒƒƒƒ¡ƒƒƒƒƒƒƒƒƒƒƒƒƒ¡ƒƒƒƒƒƒƒƒƒƒƒƒƒƒ¡ƒƒƒƒƒƒƒƒƒƒƒƒƒƒŸ
+
+
+Folgende Karten bzw. ChipsÑtze werden native, d.h. ohne geladenen VESA-Treiber
+unterstÅtzt:
+
+        ET3000                  (ungetestet)
+        ET4000
+        Trident 8900
+        PVGA (Paradise)         (ungetestet)
+        S3
+
+
+
+8. Autodetect
+
+Seit der Version 3.00 verfÅgt der Treiber Åber mehrere Autodetect-Modi, bei
+denen der Treiber versucht, die Grafik-Karte selbststÑndig zu erkennen und die
+richtigen Parameter zu setzen. Dies sollte immer funktionieren wenn Sie eine
+VESA-Karte besitzen und (falls notwendig) den entsprechenden VESA-Treiber
+geladen haben. Dieser Treiber befindet sich normalerweise auf den Disketten, die
+Sie zu Ihrer VGA erhalten haben und hei·t VESA.COM, VESA.EXE oder manchmal
+(Trident Karten) auch VESA9000.EXE. Der Treiber wird resident geladen und stellt
+dann das VESA-Interface zur VerfÅgung. Ohne VESA-Treiber besteht die
+Mîglichkeit da· der Treiber Ihre Karte nicht erkennt. Notfalls mÅssen Sie auf
+die kartenspezifischen Modi ausweichen.
+
+öber meinen Fax/Modem Server ist ein Paket erhÑltlich, das Public Domain VESA-
+Treiber fÅr viele gÑngigen Karten enthÑlt. Verwenden Sie zum Download
+login/password "bgi" - die Datei hat den Namen VESADRIV.ZIP.
+
+
+
+9. DPMI-Version fÅr BP 7.0
+
+Dem Paket liegt eine DPMI fÑhige Version des Treibers bei. Diese Version findet
+sich im Verzeichnis SVGA unter dem Namen SVGA.BP7 (und mu· vor der Verwendung
+noch in SVGA.BGI umbenannt werden).
+
+Der Treiber sollte sich genau wie der normale Treiber verhalten, mit Ausnahme
+der folgenden Unterschiede:
+
+  * Die BP7-Version lÑuft nicht unter Turbo-Pascal 6.0 und frÅher sowie
+    beliebigen Version von Borland-C (bis hin zu 3.1).
+
+  * Die Version dÅrfte aufgrund der komplizierteren Segment-Umschaltung
+    geringfÅgig langsamer sein.
+
+Falls bei der Benutzung des Treibers Fehler auftreten sollten, mîchte ich Sie
+bitten diese an mich zu melden. Probleme sind (wenn Åberhaupt), dann am ehesten
+bei der automatischen Erkennung der Karten zu erwarten.
+
+
+
+10. Optionen
+
+Der Treiber kennt in der aktuellen Version mehrere Optionen, mit denen sich
+das Verhalten beeinflu·en lÑsst. Diese Optionen werden vor Programmstart durch
+Zuweisung an die Environment-Variable SVGAOPTS gesetzt.
+ACHTUNG: Es wird Gro·-/Kleinschreibung unterschieden!
+
+      V Schaltet die VESA-Erkennung ab. Da mit aktivem VESA-Treiber manche
+        Features des Treibers nicht genutzt werden kînnen (z.B. mehrere
+        Bildschirmseiten), zudem die direkte Ansteuerung je nach Karte etwas
+        schneller ist, kann durch diese Option die VESA-Erkennung abgeschaltet
+        werden.
+
+      F Schnelle DPMI Segmentumschaltung im VESA-Modus ausschalten.
+        Der Treiber verwendet eine relativ agressive Optimierung um VESA
+        kompatible Karten im Protected Mode mit akzeptabler Geschwindigkeit
+        ansteuern zu kînnen. Falls sich hiermit Probleme ergeben kann entweder
+        die VESA-Erkennung, oder die Optimierung abgeschaltet werden. Die
+        "Probleme" lassen sich recht einfach erkennen, da das Programm in
+        diesem Fall mit einer allgemeinen Schutzverletzung beendet wird.
+        ACHTUNG: Der Treiber wird durch Setzen dieser Option katastrophal
+        langsam (funktioniert aber dafÅr immer)!
+        Dieser Schalter hat nur eine Bedeutung im Protected Mode und auch nur
+        dann, wenn die Karte als VESA-Karte betrieben wird.
+
+      3 Abschalten der Hardware-Funktionen fÅr S3 Karten. Bei Verwendung von
+        Karten mit S3 Chipsatz wird normalerweise die Hardware des Chipsatzes
+        genutzt, um einige der BGI-Funktionen schneller durchfÅhren zu kînnen.
+        Bei Problemen kann durch Setzen dieser Option die Verwendung der
+        Graphics Engine ausgeschaltet werden. Der Treiber fÅhrt dann alle
+        Operationen per Software aus (wie bei anderen Karten auch).
+
+      M Erzwingt die Verwendung der VESA-Modusnummern. Hat keinen Einfluss wenn
+        ein VESA-Treiber verwendet wird. Damit kînnen auch ChipsÑtze "native"
+        verwendet werden, deren Modusnummern nicht mit den im Treiber
+        verwendeten Åberstimmen. Dazu wird ein VESA-Treiber geladen, die VESA-
+        Erkennung mit 'V' abgeschaltet, und mit 'M' die Verwendung von VESA-
+        Modusnummern erzwungen. Dadurch wird der VESA-Treiber nur zum Umschalten
+        in den Grafikmodus verwendet.
+
+Beispiele fÅr das Setzen der Optionen:
+
+    REM VESA-Erkennung und schnelle VESA-Segmentumschaltung abschalten
+    SET SVGAOPTS=VF
+
+oder
+
+    REM VESA-Erkennung abschalten
+    SET SVGAOPTS=V
+
+
+
+11. Fehler im UNIT Graph
+
+11.1 Fehlercodes
+
+Durch einen Fehler im UNIT Graph werden die negativen Fehlercodes, die der
+Treiber zurÅckgibt positiv an die Anwendung durchgereicht: Das Status-Feld des
+Treibers, Åber das die Fehlercodes rÅckgemeldet werden ist 1 Byte gro·. Da die
+Fehlercodes negative Werte sind, hÑtte dieses Feld als SHORTINT deklariert
+werden mÅssen. Die Entwickler haben dies aber Åbersehen und das Feld als BYTE
+deklariert, was dazu fÅhrt, da· die Fehlercodes nicht vorzeichenrichtig
+erweitert werden. Abhilfe schafft eine Abfrage wie in der folgenden Abbildung.
+Unter UmstÑnden kann GraphResult entsprechend Åberdefiniert werden.
+
+    VAR
+      Result : INTEGER;
+
+    BEGIN
+      { Grafik einschalten }
+      InitGraph (GraphDriver, GraphMode, '');
+
+      { Fehlercode auswerten. Durch den Typecast werden die
+        obersten 8 Bits abgeschnitten, durch die Zuweisung
+        an einen INTEGER wird vorzeichenrichtig erweitert.
+      }
+      Result := SHORTINT (GraphResult);
+      IF (Result <> 0) THEN BEGIN
+        Writeln (GraphErrorMsg (Result));
+        Halt;
+      END;
+      ....
+    END;
+
+
+
+11.2 SetGraphMode
+
+Die Funktion SetGraphMode arbeitet fehlerhaft wenn Modusnummern grî·er 10
+angegeben werden. Von der Verwendung dieser Funktion wird abgeraten. Verwenden
+Sie stattdessen Aufrufe von CloseGraph und InitGraph.
+
+
+
+11.3 RestoreCRTMode und SetGraphMode
+
+Die Funktionen arbeiten unter Borland-Pascal 7.0 im Protected-Mode nicht
+korrekt, u.U. ist ein GP Fault die Folge.
+
+
+
+11.4 RegisterBGIDriver
+
+Manuell geladene (d.h. als .OBJ-File eingebundene oder aus einem Resource-File
+geladene) Treiber mÅssen unter Borland-Pascal 7.0 im Protected-Mode auf eine
+Adresse zu liegen kommen, die einen Offset von 0 hat. Ansonsten bricht das
+Grafik-Kernel beim zweiten Aufruf von InitGraph u.U. das Programm mit einer
+Fehlermeldung ab.
+
+Um sicherzustellen, da· der Treiber auf einer Adresse mit Offset 0 zu liegen
+kommt, wenn er als .OBJ-Datei eingebunden wird, erstellen Sie bitte ein
+separates Modul, in dem sich ausschlie·lich der Treiber befindet. Exportieren
+Sie die Adresse des Treibers und fÅhren Sie die Initialisierung der Grafik in
+einem anderen Modul durch.
+
+
+
+12. Sonstiges
+
+12.1. Maus-UnterstÅtzung
+
+Eine der am hÑufigsten gestellten Fragen ist die nach dem Maus-Support in den
+erweiterten Modi (auch oft in der Form "Wieso tut jetzt plîtzlich die Maus nicht
+mehr ?").
+Tatsache ist, da· der Maustreiber die erweiterten Modi der Super-VGA Karten
+nicht kennt, weil diese Modi bei allen Karten anders anzusteuern sind.
+Aus diesem Grund ist der Maustreiber in den erweiteren Modi nicht in der Lage,
+einen Mauscursor darzustellen. Der Maustreiber fÅhrt aber trotzdem Buch Åber die
+Bewegungen der Maus, so da· es mîglich ist, die Mausposition abzufragen und
+einen eigenen Mauscursor darzustellen. Dazu sind folgende Dinge zu beachten:
+
+  * Das Turbo-Pascal/Turbo-C Grafik-Kernel (und auch der Treiber) sind nicht
+    reentrant. Es ist also nicht mîglich, einen Mauscursor unter Verwendung von
+    GRAPH und dem Interrupt-Handler des Maustreibers zu zeichnen. Das Zeichnen
+    des Cursors mu· synchron im Programm geschehen.
+  * Da der Maustreiber die Auflîsung des Bildschirms nicht kennt, ist es (bei
+    manchen Treibern) mîglich, da· die vom Maustreiber gelieferten Pixelwerte
+    falsch sind. Abhilfe ist hier durch Auswerten der tatsÑchlichen
+    Mausbewegungen (in Mickeys) mîglich (oder durch EinfÅhrung einer
+    Umrechnungskonstante wie in c't 6/90, S. 274).
+  * Die Verwendung von GetImage/PutImage zur Darstellung des Cursor empfiehlt
+    sich nicht, da PutImage die Darstellung verweigert, wenn Teile des Cursors
+    sich au·erhalb des Bildschirms befinden. Dies fÅhrt zu dem unangenehmen
+    Effekt, da· bei RandberÅhrung der Mauscursor verschwindet.
+  * NÑhere Informationen zu diesem Thema (und ein Beispielprogramm in C)
+    enthÑlt der Artikel in c't 6/90, S. 274.
+  * Von mir ist gegen Einsendung eines adressierten Frei-Umschlags und einer
+    Diskette ein Modul in Pascal erhÑltlich, das ich zur Maus-UnterstÅtzung
+    geschrieben habe. Dieses Modul kann jedoch nur als Beispiel fÅr die eigene
+    Programmierung dienen, weil es fÅr die Zusammenarbeit mit einem (auch von
+    mir stammenden) Multitasking-Kernel konzipiert ist. Es ist alleine nicht
+    kompilier- bzw. lauffÑhig, zeigt jedoch die grundsÑtzliche Vorgehensweise
+    auf.
+
+Da doch îfters einige Anfragen kommen, mîchte ich nochmals darauf hinweisen, da·
+ich _kein_ fertiges Modul zur Mausabfrage habe. Falls Sie jedoch Åber
+entsprechende Routinen verfÅgen, bin ich gerne bereit, diese dem Treiber
+beizulegen.
+
+
+
+12.2. UnterstÅtzung von mehr als 256 Farben
+
+Aufgrund eines Design-Fehlers (eine andere Bezeichnung fÑllt mir dazu leider
+nicht ein) kann das BGI-Konzept nicht mehr als 256 Farben unterstÅtzen. Das
+Grafik-Kernel kappt direkt auf oberster Ebene das High-Byte des Åbergebenen
+Farbwertes (wer mag, kann sich den Code von SetColor mit dem Turbo-Debugger
+anschauen...). Auch die Schnittstelle zum Treiber ist nur 8 Bit breit (der
+Farbwert wird als Byte Åbergeben).
+D.h. es wird keinen Treiber fÅr HiColor-Karten oder Ñhnliches geben !
+
+
+
+12.3. 286 und 386-Versionen des Treibers
+
+Von mir durchgefÅhrte Tests haben ergeben, da· eine 80286-Version des Treibers
+keine me·baren Unterschiede zur 8086-Version zeigt.
+
+Eine 80386-Version, die probeweise von mir erstellt wurde, ist in einigen
+wenigen Funktionen, etwas schneller als die Normalversion. Welche Funktionen
+dies sind lÑ·t sich nicht genau angeben, da dies u.a. von der verwendeten Karte
+abhÑngt. Auf ISA-Karten (16 Bit Bus) ist PutImage die einzige Funktion, wo die
+Unterschiede deutlich sind (ca. 20-25%), und auch nur dann, wenn als Modus
+*nicht* CopyPut angegeben wird (also z.B. XORPut). Auf VLB und PCI Karten (32
+Bit Bus) sind zusÑtzlich einige der FÅllfunktionen schneller, da mit 32
+Bit-Operationen gearbeitet wird.
+
+Wer eigene Tests anstellen will, kann dazu das Programm BGIBench verwenden,
+das sich im Verzeichnis BGIBENCH befindet. Die 80386-Version des Treibers
+findet sich als SVGA386.BGI bzw. SVGA386.BP7 im Verzeichnis SVGA.
+
+ACHTUNG:
+  1. Dies 80386-Version stÅrzt auf 80286- (oder gar 8086-) Rechnern
+     kommentarlos ab.
+  2. Der Name lautet wirklich "SVGA386"; dieser Name mu· also auch bei
+     RegisterBGIDriver angegeben werden.
+
+
+
+12.4. Sonstige Software
+
+Im Lieferumfang befinden sich noch einige Programme, lesen Sie dazu bitte die
+auf der Diskette befindliche README-Datei.
+
+
+
+12.5. BGI-Treiber fÅr Drucker, Plotter und fÅr PCX-Files...
+
+...sind kostenlos Åber meinen Fax/Modem-Server unter der Telefon-Nummer
+07071/440588 erhÑltlich. NÑhere Hinweise erhalten Sie Online.
+
+
+
+13. UnterstÅtzung weiterer Karten
+
+Wenn Sie Informationen Åber weitere Karten besitzen, die Sie gerne unterstÅtzt
+hÑtten, bitte ich Sie, mir diese Informationen zur VerfÅgung zu stellen.
+Besonderes Interesse habe ich an Informationen Åber weitere Beschleuniger-
+karten.
+
+
+
+14. Support
+
+Gibt es in der Form keinen (schlie·lich ist SVGA.BGI ein "freies" Produkt).
+Nichtsdestotrotz bin ich daran interessiert, von Fehlern oder neuen Anwendungen
+zu erfahren.
+Neue Versionen (falls solche vorliegen sollten) erhalten sie per Modem unter
+07071/440588. Login: svga / Password: svga. Der Rechner startet sofort das
+Z-Modem Programm und sendet die Datei SVGAVVVV.ZIP (VVVV = Version).
+
+
+
+15. Dateien im Paket
+
+Das vorliegende Archiv mu· folgende Dateien enthalten:
+
+
+Im Verzeichnis  SVGA
+                SVGA.BGI        Der BGI-Treiber
+                SVGA386.BGI     80386-Version des Treibers. Siehe Text weiter
+                                oben.
+                SVGA.BP7        DMPI-Versionen, siehe Text.
+                SVGA386.BP7
+
+
+Im Verzeichnis  BGIBENCH
+                BGIBENCH.EXE    Me·programm fÅr BGI-Treiber.
+                BGIBENCH.PAS    Der Quellcode dazu.
+                BGIBENCH.DOC    Die Dokumentation.
+
+
+Im Verzeichnis  PIXFONT
+                PIXFONT.PAS     Quelltext eines Moduls zur Ausgabe beliebiger
+                                Pixelfonts.
+                PIXFONT.DOC     Die Dokumentation dazu.
+                GETFONT.EXE     Programm zur Abspeicherung der VGA-Fonts.
+                GETFONT.PAS     Der Quelltext dazu.
+                *.FNT           Diverse Pixelfonts.
+                FONTDEMO.EXE    Beispielprogramm zur Verwendung der Pixelfonts.
+                FONTDEMO.PAS    Der Quelltext dazu.
+                FONTDEMO.DOC    Die Dokumentation dazu.
+                PIXFONT.C       C-Version des Moduls.
+                PIXFONT.H       Header-File dazu.
+                FONTTEST.EXE    Testprogramm fÅr die C-Version.
+                FONTTEST.C      Der Quelltext dazu.
+                FONTTEST.DOC    Die Dokumentation dazu.
+
+
+Im Verzeichnis  PCXVIEW
+                PCXVIEW.EXE     Ein Programm zum Ansehen von PCX-Bildern als
+                                Beispiel fÅr die Einbindung von SVGA.BGI und
+                                die Verwendung der 256-Farben Palette.
+                PCXVIEW.PAS     Der Quellcode dazu.
+                PCXVIEW.DOC     Die Dokumentation.
+
+
+Im Verzeichnis  SVGADEMO        Ein Demoprogramm in C zur Anwendung von SVGA.BGI
+                                von Herrn Jung-Merkelbach.
+
+
+Im Verzeichnis  BGILIB
+                MAKELIB.BAT     Batch-Datei von Herrn Jung-Merkelbach zur
+                                Erzeugung zweier Libraries fÅr den C-Compiler,
+                                die die kompletten Fonts und Treiber als OBJ-
+                                Dateien enthalten.
+

@@ -1,0 +1,1099 @@
+; *****************************************************************************
+; *                                                                           *
+; *           Kartenspezifische Routinen fÅr den SVGA.BGI Treiber             *
+; *                                                                           *
+; * (C) 1990-94 by                                                            *
+; * Ullrich von Bassewitz                                                     *
+; * ZwehrenbÅhlstra·e 33                                                      *
+; * D-72070 TÅbingen                                                          *
+; *                                                                           *
+; * E-Mail: uz@ibb.schwaben.de                                                *
+; *                                                                           *
+; *****************************************************************************
+
+
+
+;---------------------------------------------------------------------
+;
+; Die folgenden Routinen sind bei Karten verschiedener Hersteller bzw. bei
+; Karten mit verschiedenen Chipsatzen jeweils kartenspezifisch.
+;
+; 64-K Segment in [Seg64] setzen. Register alle erhalten
+; Achtung: Das Datensegment mu· nicht stimmen, daher immer ds extra laden
+;
+
+PROC    ET3000_SegSwitch NEAR
+
+        push    dx
+        push    ax
+        mov     dx, ds
+        SetToDS ds
+        mov     al, [Seg64]
+        mov     ds, dx
+        mov     ah, al
+IF P80286
+        shl     al, 3
+ELSE
+        shl     al, 1
+        shl     al, 1
+        shl     al, 1
+ENDIF
+        or      al, ah
+        or      al, 40h                 ; Segment-Configuration
+        mov     dx, 3CDh
+        out     dx, al
+        pop     ax
+        pop     dx
+        ret
+
+ENDP    ET3000_SegSwitch
+
+
+; ----------------------------------------------
+; ET 4000
+
+PROC    ET4000_SegSwitch NEAR
+
+        push    dx
+        push    ax
+        mov     dx, ds
+        SetToDS ds
+        mov     al, [Seg64]
+        mov     ds, dx
+        mov     ah, al
+IF P80286
+        shl     al, 4
+ELSE
+        shl     al, 1
+        shl     al, 1
+        shl     al, 1
+        shl     al, 1
+ENDIF
+        or      al, ah
+        mov     dx, 3CDh
+        out     dx, al
+        pop     ax
+        pop     dx
+        ret
+
+ENDP    ET4000_SegSwitch
+
+; ----------------------------------------------
+; Video7
+
+
+PROC    V7_SegSwitch    NEAR
+
+        push    ax
+        push    cx
+        push    dx
+        mov     dx, ds
+        SetToDS ds
+        mov     ch, [Seg64]             ; Segment holen
+        mov     ds, dx
+        cli
+
+; Erweiterte Register freigeben
+
+        mov     dx, 3C4h
+        mov     ax, 0EA06h
+        out     dx, ax
+
+; Bank 0 Bit
+
+        mov     al, 0F9h
+        mov     ah, ch
+        and     ah, 1
+        out     dx, ax
+
+; Bank 1 Bit
+
+        mov     dl, 0CCh                ; dx = 3CCh
+        in      al, dx
+        and     al, 0DFh                ; Bit 5 auf 0 setzen
+        mov     ah, al                  ; ah ist temp
+        mov     al, ch                  ; Segment in al
+        and     al, 2                   ; Page and 2
+IF P80286
+        shl     al, 4
+ELSE
+        mov     cl, 4
+        shl     al, cl                  ; (Page and 2) shl 4;
+ENDIF
+        or      al, ah                  ; temp or ((Page and 2) shl 4);
+        mov     dl, 0C2h                ; dx = 3C2h
+        out     dx, al
+
+; Bank 2 Bit
+
+        inc     dx
+        inc     dx                      ; dx = 3c4h
+        mov     al, 0F6h
+        out     dx, al
+
+        inc     dx                      ; dx = 3c5h
+        in      al, dx                  ; al ist temp
+        and     al, 0FAh                ; Bits 0 und 2 lîschen
+        and     ch, 4                   ; Page, Bit 2
+        or      al, ch                  ; temp or (Page and 4)
+IF P80286
+        shr     ch, 2
+ELSE
+        shr     ch, 1
+        shr     ch, 1                   ; ((Page and 4) shr 2);
+ENDIF
+        or      al, ch                  ; temp or (Page and 4) or ...
+        out     dx, al
+
+; Das war's (jessas !)
+
+        sti
+        pop     dx
+        pop     cx
+        pop     ax
+        ret
+
+ENDP    V7_SegSwitch
+
+
+; ----------------------------------------------
+; Trident 8900
+
+
+PROC    Trident_SegSwitch       NEAR
+
+        push    ax
+        push    dx
+
+        cli
+
+        mov     dx, 3CEh
+        mov     ax, 0606h
+        out     dx, al
+        inc     dx
+        in      al, dx
+        dec     dx
+        or      al, 04h
+        xchg    ah, al                  ; ah = Wert, al = 6
+        out     dx, ax
+
+        mov     dl, 0C4h                ; dx = 3C4h
+        mov     al, 0Bh
+        out     dx, al                  ; New Mode Control einschalten
+        inc     dx
+        in      al, dx
+        dec     dx
+
+        mov     dx, ds
+        SetToDS ds
+        mov     ah, [Seg64]             ; Segment holen
+        mov     ds, dx
+        mov     dx, 3C4h
+
+        xor     ah, 02h
+        mov     al, 0Eh
+        out     dx, ax                  ; new Mode Port Ctrl 1
+
+        sti
+        pop     dx
+        pop     ax
+        ret
+
+ENDP    Trident_SegSwitch
+
+
+; ----------------------------------------------
+; ATI VGA-Wonder
+
+PROC    ATI_SegSwitch NEAR
+
+        push    ax
+        push    dx
+        push    ds
+        SetToDS ds
+        mov     dx, [Extended_Reg]
+        cli
+        mov     al, 0B2h                ; Page Select
+        out     dx, al
+        inc     dx
+        in      al, dx                  ; Alten Wert holen
+        and     al, 0E1h                ; Seitenbits lîschen
+        mov     ah, al                  ; Wert retten
+        mov     al, [Seg64]             ; Segment holen
+        shl     al, 1
+        or      ah, al
+        mov     al, 0B2h                ; Page Select
+        dec     dx
+        out     dx, ax
+        sti
+        pop     ds
+        pop     dx
+        pop     ax
+        ret
+
+ENDP    ATI_SegSwitch
+
+; ------------------------------------------------
+; Paradise VGA
+
+PROC    Par_SegSwitch NEAR
+
+        push    ax
+        push    dx
+        mov     dx, 3CEh
+        mov     ax, 050Fh
+        cli                             ; Interrupts off
+        out     dx, ax
+        mov     dx, ds
+        SetToDS ds
+        mov     ah, [Seg64]             ; Segment holen
+        mov     ds, dx
+IF P80286
+        shl     ah, 4
+ELSE
+        shl     ah, 1
+        shl     ah, 1
+        shl     ah, 1
+        shl     ah, 1
+ENDIF
+        mov     al, 9
+        out     dx, ax
+        sti                             ; Interrupts zulassen
+        pop     dx
+        pop     ax
+        ret
+
+ENDP    Par_SegSwitch
+
+
+; ----------------------------------------------------
+; Everex VGA
+
+PROC    Evx_SegSwitch NEAR
+
+        push    ax
+        push    cx
+        push    dx
+        mov     dx, ds
+        SetToDS ds
+        mov     cl, [Seg64]             ; Segment holen
+        mov     ds, dx
+        cli
+        mov     dx, 03C4h
+        mov     al, 08h
+        out     dx, al
+        inc     dx
+        in      al, dx
+        dec     dx
+        shl     al, 1
+        shr     cl, 1
+        rcr     al, 1
+        mov     ah, al
+        mov     al, 08h
+        out     dx, ax
+        mov     dl, 0CCh                ; dx = 3CCh
+        in      al, dx
+        mov     dl, 0C2h                ; dx = 3C2h
+        and     al, 0DFh
+        shr     cl, 1
+        jc      @@L1
+        or      al, 20h
+@@L1:   out     dx, al
+        sti
+        pop     dx
+        pop     cx
+        pop     ax
+        ret
+
+ENDP    Evx_SegSwitch
+
+
+; ----------------------------------------------------
+; OAK VGA
+
+PROC    Oak_SegSwitch NEAR
+
+        push    ax
+        push    dx
+        mov     dx, ds
+        SetToDS ds
+        mov     al, [Seg64]             ; Segment holen
+        mov     ds, dx
+        mov     ah, al
+IF P80286
+        shl     ah, 4
+ELSE
+        shl     ah, 1
+        shl     ah, 1
+        shl     ah, 1
+        shl     ah, 1
+ENDIF
+
+; Ab hier sind die Implementationen verschieden. In einer anderen Variante
+; wird nur das neue Segment mit 4 Bits oben / 4 Bits unten nach 3DF ausgegeben.
+
+        or      al, ah
+        mov     dx, 03dFh
+        out     dx, al
+
+;       or      ah, al                  ; or    al, ah
+;       mov     al, 11h
+;       mov     dx, 03DEh               ; mov   dx, 03DFh
+;       out     dx, ax                  ; out   dx, al
+        pop     dx
+        pop     ax
+        ret
+
+ENDP    Oak_SegSwitch
+
+; ----------------------------------------------------
+; VESA VGA
+;
+; Hier sind zwei Routinen vorhanden: Die erste, die nur ein
+; Fenster verwendet (das dann les- und schreibbar sein mu·).
+; Die zweite wenn nur ein les- und ein schreibbares Fenster
+; vorhanden ist.
+;
+
+
+PROC    VESA_SegSwitch1 NEAR
+
+        push    ax
+        push    bx
+        push    dx
+        push    ds
+        SetToDS ds
+
+        mov     al, [Seg64]             ; Segment holen
+        mul     [VESA_Granularity]      ; Position rechnen
+        xchg    ax, dx                  ; Position nach dx
+        mov     bx, [VESA_Window]       ; Fensternummer
+        call    [VESA_WinFunc]          ; Fenster einblenden
+
+        pop     ds
+        pop     dx
+        pop     bx
+        pop     ax
+        ret
+
+ENDP    VESA_SegSwitch1
+
+
+
+PROC    VESA_SegSwitch2 NEAR
+
+        push    ax
+        push    bx
+        push    dx
+        push    ds
+        SetToDS ds
+
+        mov     al, [Seg64]             ; Segment holen
+        mul     [VESA_Granularity]      ; Position rechnen
+        xchg    ax, dx                  ; Position nach dx
+        push    dx                      ; und Position retten
+        xor     bx, bx                  ; Fensternummer = 0
+        call    [VESA_WinFunc]          ; Fenster einblenden
+        inc     bx                      ; Fensternummer = 1
+        pop     dx                      ; Alte Position wieder
+        call    [VESA_WinFunc]          ; Fenster einblenden
+
+        pop     ds
+        pop     dx
+        pop     bx
+        pop     ax
+        ret
+
+ENDP    VESA_SegSwitch2
+
+
+
+PROC    VESA_SegSwitch3 NEAR
+
+        push    ax
+        push    bx
+        push    dx
+        push    ds
+        SetToDS ds
+
+        mov     al, [Seg64]             ; Segment holen
+        mul     [VESA_Granularity]      ; Position rechnen
+        xchg    ax, dx                  ; Position nach dx
+        mov     bx, [VESA_Window]       ; Fensternummer
+        mov     ax, 4F05h               ; Funktionscode nach ax
+        int     10h                     ; Fenster einblenden
+
+        pop     ds
+        pop     dx
+        pop     bx
+        pop     ax
+        ret
+
+ENDP    VESA_SegSwitch3
+
+
+
+PROC    VESA_SegSwitch4 NEAR
+
+        push    ax
+        push    bx
+        push    dx
+        push    ds
+        SetToDS ds
+
+        mov     al, [Seg64]             ; Segment holen
+        mul     [VESA_Granularity]      ; Position rechnen
+        xchg    ax, dx                  ; Position nach dx
+        push    dx                      ; und retten
+        xor     bx, bx                  ; Fensternummer = 0
+        mov     ax, 4F05h               ; Funktionscode nach ax
+        int     10h                     ; Fenster einblenden
+
+        inc     bx                      ; Fensternummer = 1
+        pop     dx                      ; Position
+        mov     ax, 4F05h               ; Funktionscode nach ax
+        int     10h                     ; Fenster einblenden
+
+        pop     ds
+        pop     dx
+        pop     bx
+        pop     ax
+        ret
+
+ENDP    VESA_SegSwitch4
+
+
+
+; -------------------------------------------------------------------
+; S3 VGA
+
+
+PROC    S3_SegSwitch    NEAR
+
+        push    ax
+        push    bx
+        push    dx
+        mov     dx, ds
+        SetToDS ds
+        mov     bl, [Seg64]             ; Segment holen
+        mov     ds, dx
+
+
+        mov     bh, bl                  ; Kopie nach bh
+        and     bx, 100Fh               ; 1 Bit in bh, 4 Bit in bl
+IF      P80286
+        shr     bh, 2                   ; Bit 4 --> Bit 2
+ELSE
+        shr     bh, 1
+        shr     bh, 1                   ; Bit 4 --> Bit 2
+ENDIF
+
+; Das oberste Bit setzen (in EX_SCTL_2, CR51)
+
+        cli
+        mov     dx, 03D4h
+        mov     al, 51h
+        out     dx, al
+        inc     dx
+        in      al, dx
+        and     al, 0F3h                ; 2 Adressbits ausblenden...
+        or      al, bh                  ; reinodern...
+        out     dx, al                  ; ... und wieder raus damit
+
+; Die unteren 4 Bit der Adresse werden in CRTR_LOCK (CR35) gesetzt
+
+@@L1:   mov     dx, 03D4h
+        mov     al, 35h
+        out     dx, al
+        inc     dx
+        in      al, dx
+        and     al, 0F0h
+        or      al, bl
+        out     dx, al
+
+; Das muesste es gewesen sein...
+
+        sti
+
+        pop     dx
+        pop     bx
+        pop     ax
+        ret
+
+ENDP    S3_SegSwitch
+
+; -------------------------------------------------------------------
+;
+; Routinen zum Einstellen der Schreibseite (SetDrawPage).
+; Werden aufgerufen mit:
+;       ax      = Einzustellende Seite
+;       ds      = Datensegment
+;
+
+PROC    Generic_DrawPage
+
+; Aus der Seite in ax den Y-Offset rechnen, um den alle Y-Koordinaten
+; verschoben werden. Diesen Offset speichern.
+
+        mul     [MaxY]
+        mov     [PageOfs], ax
+
+; fertig
+
+        ret
+
+ENDP    Generic_DrawPage
+
+
+PROC    S3_DrawPage
+
+; S3 Karten haben die Besonderheit, dass nach der ersten Seite 8 Zeilen
+; freigehalten werden, dort wird eine Kopie des FÅllmusters zur Verwendung
+; mit der Hardware-Engine abgelegt.
+
+        test    ax, ax                  ; Seite = 0?
+        jz      @@L1                    ; Ok, Offset ist 0
+        mul     [MaxY]                  ; sonst mal Bildschirmhîhe
+        add     ax, 8                   ; + 8 Zeilen
+@@L1:   mov     [PageOfs], ax
+
+; fertig
+
+        ret
+
+ENDP    S3_DrawPage
+
+
+; --------------------------------------------------------------
+;
+; Kartenspezifische Routinen zum Einstellen der Anzeigeseite
+;
+; Werden aufgerufen mit:
+;       ax      = Einzustellende Seite
+;       ds      = Datensegment
+
+
+; Unterprogramm um die unteren 16 Bit der Startadresse zu setzen (diese
+; sind auf allen Karten identisch). ACHTUNG: Die Funktion kehrt mit gesperrten
+; Interrupts und dem Wert 03D4h in dx zurÅck. Zerstîrt werden dx und ax.
+
+PROC    SetStartAdrLow  NEAR
+
+        push    ax
+        mov     dx, 03D4h
+        mov     ah, al
+        mov     al, 0DH
+        cli
+        out     dx, ax                  ; CRTC Register 0Dh, Low byte
+        pop     ax
+        mov     al, 0Ch
+        out     dx, ax                  ; CRTC Register 0Ch, High byte
+
+        ret
+
+ENDP    SetStartAdrLow
+
+
+; Unterprogramm zur Berechnung des Byte-Offsets einer gegebenen Bildschirm-
+; Seite in ax. Ergebnis wird in bx:ax zurÅckgeliefert, dx wird zerstîrt.
+
+PROC    CalcPageOffset  NEAR
+
+        mov     bx, ax
+        mul     [WORD HIGH ScreenBytes]
+        xchg    bx, ax
+        mul     [WORD LOW ScreenBytes]
+        add     bx, dx
+        shr     bx, 1
+        rcr     ax, 1
+        shr     bx, 1
+        rcr     ax, 1                   ; / 4
+        ret
+
+ENDP    CalcPageOffset
+
+
+
+PROC    ET3000_VisualPage
+
+; Den Byte-Offset rechnen.
+
+        call    CalcPageOffset          ; Byte-Offset in bx:ax
+        shl     bx, 1                   ; Mu· in Bit 1 stehen fÅr spÑter
+        and     bl, 02h                 ; Bit 19
+
+; Untere 16 Bits setzen
+
+        call    SetStartAdrLow
+
+; Bit 19 ausgeben
+
+        mov     al, 23h
+        out     dx, al
+        inc     dx
+        in      al, dx
+        and     al, 0FDh                ; Bit 2 isses ...
+        or      al, bl
+        out     dx, al
+        sti
+        ret
+
+ENDP    ET3000_VisualPage
+
+
+
+
+PROC    ET4000_VisualPage
+
+; Den Byte-Offset rechnen.
+
+        call    CalcPageOffset          ; Byte-Offset in bx:ax
+        and     bl, 03h                 ; Bits 19/20
+
+; Untere 16 Bits setzen
+
+        call    SetStartAdrLow
+
+; Obere 2 Bits setzen
+
+        mov     al, 33h                 ; Register 33h (TSENG ET4000)
+        out     dx, al
+        inc     dx
+        in      al, dx                  ; Wert lesen
+        and     al, 0FCh                ; Untere beiden Bits maskieren
+        or      al, bl
+        out     dx, al
+        sti
+        ret
+
+ENDP    ET4000_VisualPage
+
+
+
+
+PROC    Trident_VisualPage
+
+; Den Byte-Offset rechnen.
+
+        call    CalcPageOffset          ; Byte-Offset in bx:ax
+IF      P80286
+        shl     bx, 2
+ELSE
+        shl     bx, 1
+        shl     bx, 1
+ENDIF
+        mov     bh, bl                  ; Kopie des High-Bytes nach bh
+
+        mov     cl, 3                   ; 286-Opt. lohnt nicht
+        shl     bl, cl
+        shr     bh, cl
+
+        and     bx, 0120h               ; Bit 19 (bl) und 20 (bh) maskieren
+
+; Untere 16 Bits setzen
+
+        call    SetStartAdrLow
+
+; Obere 2 Bits setzen
+
+        mov     al, 1Eh                 ; Index
+        out     dx, al
+        inc     dx
+        in      al, dx
+        and     al, 5Fh
+        or      al, 80h
+        or      al, bl
+        out     dx, al
+
+        mov     dl, 0CEh                ; dx = 3CEh
+        mov     ax, 0B011h
+        out     dx, ax
+        mov     al, 0Eh
+        out     dx, al
+        inc     dx
+        in      al, dx
+        and     al, 0FEh
+        or      al, bh
+        out     dx, al
+        sti
+        ret
+
+ENDP    Trident_VisualPage
+
+
+
+
+PROC    V7_VisualPage
+
+; Den Byte-Offset rechnen.
+
+        call    CalcPageOffset          ; Byte-Offset in bx:ax
+        and     bl, 03h                 ; Bit 19/20 maskieren
+
+IF      P80286
+        shl     bl, 4
+ELSE
+        shl     bl, 1
+        shl     bl, 1
+        shl     bl, 1
+        shl     bl, 1
+ENDIF
+
+; Untere 16 Bits setzen
+
+        call    SetStartAdrLow
+
+; Bits 19/20 setzen
+
+        mov     al, 0F6h
+        mov     dl, 0CEh                ; dx = 3CEh
+        out     dx, al
+        inc     dx
+        in      al, dx
+        and     al, 08Fh
+        or      al, bl
+        out     dx, al
+        sti
+        ret
+
+ENDP    V7_VisualPage
+
+
+
+
+PROC    Par_VisualPage
+
+; Den Byte-Offset rechnen.
+
+        call    CalcPageOffset          ; Byte-Offset in bx:ax
+IF      P80286
+        shl     bl, 3
+ELSE
+        shl     bl, 1
+        shl     bl, 1
+        shl     bl, 1
+ENDIF
+        and     bl, 018h                ; Bits 19/20
+
+; Untere 16 Bits setzen
+
+        call    SetStartAdrLow
+
+; Bits 19/20 setzen
+
+        mov     al, 0Dh                 ; Index
+        mov     dl, 0CEh                ; dx = 3CEh
+        out     dx, al
+        inc     dx
+        in      al, dx
+        and     al, 0E7h
+        or      al, bl
+        out     dx, al
+        sti
+        ret
+
+ENDP    Par_VisualPage
+
+
+
+PROC    S3_VisualPage
+
+; Den Byte-Offset rechnen. Bei der S3-Karte werden oberhalb der ersten Seite
+; 8 Zeilen freigelassen, dorthin wird eine Kopie des FÅllmusters gelegt.
+; Aufgrund der Tatsache, dass 4 Planes verwendet werden ist der Page
+; Offset um den Faktor 4 kleiner, es mussen als (virtuell) 2 Zeilen addiert
+; werden.
+
+        sub     bx, bx
+        test    ax, ax                  ; Seite = 0 ?
+        jz      @@L1                    ; Ja: Offset 0
+        call    CalcPageOffset          ; Seiten-Offset nach bx:ax
+        add     ax, [BytesPerLine]
+        adc     bx, 0
+        add     ax, [BytesPerLine]
+        adc     bx, 0
+@@L1:   mov     bh, bl                  ; Kopie des low bytes nach bh
+
+IF      P80286
+        shl     bl, 4
+        shr     bh, 2
+ELSE
+        shl     bl, 1
+        shl     bl, 1
+        shl     bl, 1
+        shl     bl, 1
+        shr     bh, 1
+        shr     bh, 1
+ENDIF
+        and     bx, 0130h               ; Bit 18 in bh, 16/17 in bl maskerien
+
+; Untere 16 Bits setzen
+
+        call    SetStartAdrLow
+
+; Bits 16/17 setzen
+
+        mov     al, 31h                 ; Register 31h (MEM_CNFG)
+        out     dx, al
+        inc     dx
+        in      al, dx                  ; Wert lesen
+        and     al, 0CFh                ; Untere beiden Bits maskieren
+        or      al, bl
+        out     dx, al
+
+; Bit 18 setzen
+
+        dec     dx
+        mov     al, 51h
+        out     dx, al
+        inc     dx
+        in      al, dx
+        and     al, 0FEh
+        or      al, bh
+        out     dx, al
+
+        sti
+        ret
+
+ENDP    S3_VisualPage
+
+
+PROC    VESA_VisualPage
+
+        mul     [MaxY]                  ; Zeile rechnen
+        mov     dx, ax                  ; Zeile nach dx
+        mov     ax, 4F07h               ; VESA/Display Start Control
+        xor     bx, bx                  ; Select Display Start
+        xor     cx, cx                  ; First display pixel in line
+        int     10h                     ; Umschalten...
+        ret
+
+ENDP    VESA_VisualPage
+
+
+; ---------------------------------------------------------------
+;
+; VESA: Daten des einzuschaltenden Modus holen
+; Kommt herein mit di = Zeiger auf Modus-Deskriptor
+; Als kleine Optimierung wird versucht ein Fenster zu finden, das
+; les- und schreibbar ist um dann die kurze Umschaltroutine zu
+; verwenden. Nur falls dies nicht mîglich ist, wird die lange
+; Umschaltroutine (mit zwei Fenstern) verwendet.
+; Das Ganze wird dadurch etwas verkompliziert, dass im Protected-Mode noch
+; die Optimierung mîglich ist, dass die VESA-Segmentumschaltung im PM auf-
+; gerufen werden kann, wenn das entsprechende Flag gesetzt ist. Es mu· also
+; eine von insgesamt 4 Segment-Umschaltroutinen entsprechend zugewiesen
+; werden.
+
+
+PROC    VESA_GraphOn NEAR
+
+        mov     ax, 4F01h                       ; Data-Request
+        mov     cx, [(TMode di).BIOSbx]         ; VESA-Modenummer
+
+IF      Ver3
+
+; Infos Åber die Speicher-Fenster holen. Das mu· (leider) fÅr RM und PM
+; unterschiedlich geschehen...
+; Da auch die verwendeten Segment-Umschaltroutinen (zwecks Speed) andere
+; sind, erfolgt die auf die folgenden Auswertung zum grî·ten Teil getrennt.
+
+        cmp     [ProtMode], 0
+        jz      @@L1                            ; Springe wenn REAL-Mode
+
+; Infos im Proteced-Mode holen. Es wird dazu die Information in eine
+; "RealModeRegs" Structure verpackt und der REAL-Mode Interrupt simuliert.
+; Das ist deshalb notwendig, weil Segmentregister Åbergeben werden.
+; Anschlie·end wird immer, d.h. auch wenn das entsprechende Options-Flag
+; gesetzt ist, ein Deskriptor fÅr das Code-Segment der Real-Mode
+; Umschaltroutine gebaut und anstelle des Segments eingetragen.
+; Die weitere Verarbeitung ist dieselbe wie im REAL-Mode.
+
+        mov     [RMRegs.rAX], ax                ; ax = 4F00h
+        mov     [RMRegs.rCX], cx
+        mov     ax, [LowBufSeg]
+        mov     [RMRegs.rES], ax
+        xor     ax, ax
+        mov     [RMRegs.rDI], ax
+        mov     [RMRegs.rSP], ax
+        mov     [RMRegs.rSS], ax                ; Use DPMI Stack
+        mov     bx, 0010h                       ; Interrupt-Nr.
+        xchg    ax, cx                          ; cx = 0
+        mov     ax, 0300h
+        push    ds
+        pop     es
+        lea     di, [RMRegs]                    ; Zeiger auf Struct in es:di
+        int     31h                             ; Simulate real mode interrupt
+        mov     es, [LowBufSel]
+        xor     di, di
+
+; Protected-Mode Codesegment eintragen
+
+        mov     ax, [WORD HIGH (VESA_InfoBlock es:di).WinFunc]
+        call    DPMI_SegToDesc                  ; Deskriptor erzeugen
+        call    DPMI_MakeCodeDesc               ; zeigt auf ausfÅhrbaren Code
+        mov     [WORD HIGH (VESA_InfoBlock es:di).WinFunc], bx
+
+        jmp     @@L2
+
+; VESA-Infos im Real-Mode holen.
+
+@@L1:   xor     di, di
+        mov     es, [LowBufSeg]                 ; es:di --> Pufferspeicher
+        int     10h                             ; VESA-BIOS aufrufen
+
+ELSE
+
+; VESA-Infos im Real-Mode holen.
+
+@@L1:   lea     di, [LowBuf]
+        SetToDS es                              ; es:di --> Pufferspeicher
+        int     10h                             ; VESA-BIOS aufrufen
+
+ENDIF
+
+; VESA-Infos wurden erfolgreich geholt, es:di zeigt auf den VESA-Info Block.
+; Zuerst mal die Anzahl Bytes pro Scanzeile holen und in der globalen
+; Variable BytesPerLine speichern. Dies Åberschreibt die Vorbelegung von
+; Init, bisher steht dort derselbe Wert wie in MaxX.
+
+@@L2:   mov     ax, [(VESA_InfoBlock es:di).BytesPerLine]
+        mov     [BytesPerLine], ax
+
+; Dann die Fenster-Attribute auswerten
+
+        mov     al, [(VESA_InfoBlock es:di).Win_A_Attributes]
+        and     al, 07h                         ; unterste Bits
+        cmp     al, 07h                         ; Fenster A les-/schreibbar ?
+        jnz     @@L3                            ; Nein
+
+; Fenster A ist les-/schreibbar, merken
+
+        mov     [VESA_Window], 0                ; Fensternummer ist 0
+        jmp     @@L4
+
+; Fenster A ist nicht les-/schreibbar, Fenster B prÅfen
+
+@@L3:   mov     al, [(VESA_InfoBlock es:di).Win_B_Attributes]
+        and     al, 07h                         ; unterste Bits
+        cmp     al, 07h                         ; Fenster B les-/schreibbar ?
+        jnz     @@L5                            ; Nein
+
+; Fenster B ist les-/schreibbar, merken
+
+        mov     [VESA_Window], 1                ; Fensternummer ist 1
+@@L4:   mov     ax, OFFSET VESA_SegSwitch1      ; Schnelle Routine
+        mov     bx, OFFSET VESA_SegSwitch3      ; Langsame Routine
+        jmp     @@L6
+
+; Keines der beiden Fenster ist les- und schreibbar.
+
+@@L5:   mov     ax, OFFSET VESA_SegSwitch2
+        mov     bx, OFFSET VESA_SegSwitch4
+@@L6:   cmp     [ProtMode], 0                   ; Protected-Mode ?
+        jz      @@L7                            ; Springe wenn Nein
+        test    [Options], OpFastVesaOff        ; Optimierung aus ?
+        jz      @@L7                            ; Springe wenn Nein
+        xchg    ax, bx                          ; Sonst langsame Routine
+@@L7:   mov     [SegSelect], ax
+
+; Zeiger auf die Umschaltroutine holen
+
+        mov     ax, [WORD LOW (VESA_InfoBlock es:di).WinFunc]
+        mov     [WORD LOW VESA_WinFunc], ax
+        mov     ax, [WORD HIGH (VESA_InfoBlock es:di).WinFunc]
+        mov     [WORD HIGH VESA_WinFunc], ax
+
+; Umrechnungsfaktor fÅr die GranularitÑt berechnen
+
+@@L9:   mov     ax, 64                          ; 64 (KB) nach ax
+        div     [BYTE LOW (VESA_InfoBlock es:di).Win_Granularity]
+        mov     [VESA_Granularity], al          ; und merken
+
+; Fertig
+
+        ret
+
+ENDP    VESA_GraphOn
+
+
+; -------------------------------------------------------------------
+; Spezielle Einschalt-Routine fÅr ATI Karten. Holt die Adresse des Extended
+; Registers
+;
+
+PROC    ATI_GraphOn Near
+
+        mov     es, [SegC000]
+        mov     ax, [es:10h]
+        mov     [Extended_Reg], ax
+        ret
+
+ENDP    ATI_GraphOn
+
+
+; -------------------------------------------------------------------
+; Spezielle Einschalt-Routine fÅr ET4000. Schaltet die Extended
+; Registers frei
+;
+
+PROC    ET4000_GraphOn  NEAR
+
+        mov     dx, 3BFh
+        mov     al, 03h
+        out     dx, al
+        mov     dx, 03D8h
+        mov     al, 0A0h
+        out     dx, al
+        ret
+
+ENDP    ET4000_GraphOn
+
+; -------------------------------------------------------------------
+; Spezielle Einschalt-Routine fÅr S3-Karten. Schaltet die Extended
+; Registers frei
+
+;
+
+PROC    S3_GraphOn      NEAR
+
+        mov     dx, 03D4h
+        mov     ax, 04838h              ; REG_LOCK1 (CR38)
+        out     dx, ax                  ; freigeben...
+
+        mov     ax, 0A039h              ; REG_LOCK2 (CR39)
+        out     dx, ax                  ; freigeben...
+
+        mov     al, 31h                 ; MEM_CNFG (CR31)
+        cli
+        out     dx, al
+        inc     dx
+        in      al, dx
+        or      al, 09h                 ; CPUA = 1, ENH MAP = 1
+        out     dx, al
+
+        dec     dx
+        mov     al, 40h                 ; SYS_CNFG (CR40)
+        out     dx, al
+        inc     dx
+        in      al, dx
+        or      al, 01h                 ; Enable enhanced Register access
+        out     dx, al
+        sti
+
+        test    [Options], OpNoS3Hardware
+        jnz     @@L1
+        mov     [Vector_Table + FuncClear], OFFSET S3_Clear
+        mov     [Vector_Table + FuncVect], OFFSET S3_Vect
+        mov     [Vector_Table + FuncFillStyle], OFFSET S3_FillStyle
+        mov     [Vector_Table + FuncPatBar], OFFSET S3_PatBar
+
+        mov     [HorLine], OFFSET S3_HorLine
+        mov     [HorLineInit], OFFSET S3_HorLineInit
+        mov     [GE_Ready], OFFSET S3_Ready
+
+
+@@L1:   ret
+
+ENDP    S3_GraphOn
+

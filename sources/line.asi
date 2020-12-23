@@ -1,0 +1,695 @@
+; *****************************************************************************
+; *                                                                           *
+; *                Linien-Routinen fÅr den SVGA.BGI Treiber                   *
+; *                                                                           *
+; * (C) 1990-94 by                                                            *
+; * Ullrich von Bassewitz                                                     *
+; * ZwehrenbÅhlstra·e 33                                                      *
+; * D-72070 TÅbingen                                                          *
+; *                                                                           *
+; * E-Mail: uz@ibb.schwaben.de                                                *
+; *                                                                           *
+; *****************************************************************************
+
+
+
+; =====================================================================
+;
+;      DW   offset   DRAW         ; Draw a line from the (CP) to (X,Y)
+;
+;   Input:
+;      ax         The ending x coordinate for the line
+;      bx         The ending y coordinate for the line
+;
+;   Return:
+;      Nothing
+;
+;
+; Draw a line from the CP to (X,Y). The current LINESTYLE setting is used.
+; The current pointer (CP) is updated to the line's endpoint.
+;
+;
+
+PROC    Draw
+
+        mov     cx, ax
+        mov     dx, bx
+        xchg    ax, [CursorX]
+        xchg    bx, [CursorY]
+        jmp     [Vector_Table + FuncVect]   ; wie Vect sonst
+
+ENDP    Draw
+
+; ====================================================================
+;
+; Zieht eine Linie, X1/Y1 = ax/bx, X2/Y2 = cx/dx, Color = DrawingColor
+;
+;
+; Das was hier folgt ist der Bresenham-Algorithmus in Assembler.
+;
+; Achtung: Weil die diagonalen Linien schon ziemlich sortiert sind (NormalMode/
+; XORMode etc.) bringen SonderfÑlle fÅr senkrechte und waagrechte Linien nix.
+; Evtl. kann versucht werden doch noch was rauszuholen indem dort auch je nach
+; WriteMode unterschieden wird, aber das wird wohl auch nicht viel mehr bringen.
+;
+
+PROC    Vect    Near
+
+Local   X1:Word, Y1:Word, X2:Word, Y2:Word = LocalSize
+
+; Stackframe erzeugen (bp mu· nicht gerettet werden)
+
+        mov     bp, sp
+        sub     sp, LocalSize
+
+; Y-Werte um den Seitenoffset korrigieren
+
+        mov     si, [PageOfs]
+        add     bx, si
+        add     dx, si
+
+; Berechne si = DeltaX
+
+        mov     si, cx                  ; X2
+        sub     si, ax                  ; - X1
+
+; Wenn (DeltaX < 0) dann tausche X1 <--> X2 und Y1 <--> Y2
+
+        jns     Line2
+        xchg    ax, cx
+        xchg    bx, dx
+        neg     si
+
+; Werte speichern
+
+Line2:  mov     [X1], ax
+        mov     [Y1], bx
+        mov     [X2], cx
+        mov     [Y2], dx
+
+; Videosegment nach es
+
+        mov     es, [VideoSeg]
+
+; Warten bis die GE fertig ist
+
+        call    [GE_Ready]
+
+; Adresse des ersten Pixels berechnen.
+; Nach der Multiplikation wird dx mit dem Pattern geladen.
+
+        mov     ax, [Y1]
+        mul     [BytesPerLine]
+        add     ax, [X1]
+        adc     dl, 0                   ; öberlauf
+        xchg    di, ax                  ; Offset
+        mov     [Seg64], dl             ; Segment
+        call    [SegSelect]             ; Segment einstellen
+
+        mov     dx, [LinePattern]
+        ror     dx, 1                   ; Punkt zeichnen ?
+        jnc     Line4                   ; Nein, nix zu tun
+
+; Punkt setzen
+
+        mov     al, [DrawingColor]
+        cmp     [WriteMode], 00h        ; Normal-Mode ?
+        jz      Line3                   ; ja
+        xor     al, [es:di]             ; XOR-Mode
+Line3:  mov     [es:di], al             ; kein stosb, di erhalten
+
+; Erster Punkt ist gesetzt (oder zumindest berechnet)
+; Berechne bx = DeltaY
+
+Line4:  mov     bx, [Y2]
+        sub     bx, [Y1]
+
+; Wenn (DeltaY > 0) dann ScanlineOffset = BytesPerLine
+
+        jns     Line5
+        neg     bx
+
+; Wenn DeltaX > DeltaY dann berechne Y = f(X)
+
+        cmp     si, bx
+        jg      Line20
+
+; ----------------------------------------------------
+; Berechnung von X = f(Y) mit Scanline-Offset -BytesPerLine
+
+        mov     cx, bx                  ; Loopcount = DeltaY
+        jcxz    Line18                  ; Count = 0 ?
+        mov     bp, bx
+        neg     bp                      ; Sum := -DeltaY
+        add     si, si                  ; 2 * DeltaX
+        add     bx, bx                  ; 2 * DeltaY
+
+        cmp     [WriteMode], 00         ; XORMode ?
+        jnz     Line50                  ; ja
+
+        mov     al, [DrawingColor]      ; Nein: Farbe laden
+        cmp     dx, 0FFFFh              ; Durchgezogene Linie ?
+        jz      Li10                    ; Ja: Sonderfall
+
+Even
+Line12: sub     di, [BytesPerLine]      ; Y := Y - 1
+        jc      Line16                  ; Segment-öberlauf
+Line13: add     bp, si                  ; Sum := Sum + 2 * DeltaX
+        js      Line14                  ; Skip wenn Sum < 0
+        sub     bp, bx                  ; Sum := Sum - 2 * DeltaY
+        inc     di                      ; X := X + 1
+        jz      Line17                  ; Segment-öberlauf
+Even
+Line14: ror     dx, 1                   ; Punkt setzen ?
+        jnc     Line15                  ; Nein
+        mov     [es:di], al             ; Punkt setzen
+Even
+Line15: loopcx  Line12                  ; NÑchster Punkt
+Line18: add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Line16: dec     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line13
+
+Line17: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line14
+
+; Dasselbe fÅr durchgezogene Linie
+
+Li10:   mov     dx, [BytesPerLine]
+EVEN
+Li12:   sub     di, dx                  ; Y := Y - 1
+        jc      Li16                    ; Segment-öberlauf
+Li13:   add     bp, si                  ; Sum := Sum + 2 * DeltaX
+        js      Li14                    ; Skip wenn Sum < 0
+        sub     bp, bx                  ; Sum := Sum - 2 * DeltaY
+        inc     di                      ; X := X + 1
+        jz      Li17                    ; Segment-öberlauf
+EVEN
+Li14:   mov     [es:di], al             ; Punkt setzen
+        loopcx  Li12                    ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Li16:   dec     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li13
+
+Li17:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li14
+
+; -------------------------------------------
+; Dasselbe nochmal mit XORMode
+
+Line50: mov     ah, [DrawingColor]      ; Farbe nach ah
+        cmp     dx, 0FFFFh              ; Durchgezogene Linie ?
+        jz      Li50                    ; Ja: Sonderfall
+
+Even
+Line52: sub     di, [BytesPerLine]      ; Y := Y - 1
+        jc      Line56                  ; Segment-öberlauf
+Line53: add     bp, si                  ; Sum := Sum + 2 * DeltaX
+        js      Line54                  ; Skip wenn Sum < 0
+        sub     bp, bx                  ; Sum := Sum - 2 * DeltaY
+        inc     di                      ; X := X + 1
+        jz      Line57                  ; Segment-öberlauf
+Even
+Line54: ror     dx, 1                   ; Punkt setzen ?
+        jnc     Line55                  ; Nein
+        mov     al, ah                  ; Farbe laden
+        xor     [es:di], al             ; Punkt setzen
+Even
+Line55: loopcx  Line52                  ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Line56: dec     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line53
+
+Line57: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line54
+
+; Sonderfall durchgezogene Linie
+
+Li50:   mov     dx, [BytesPerLine]
+
+Even
+Li52:   sub     di, dx                  ; Y := Y - 1
+        jc      Li56                    ; Segment-öberlauf
+Li53:   add     bp, si                  ; Sum := Sum + 2 * DeltaX
+        js      Li54                    ; Skip wenn Sum < 0
+        sub     bp, bx                  ; Sum := Sum - 2 * DeltaY
+        inc     di                      ; X := X + 1
+        jz      Li57                    ; Segment-öberlauf
+Even
+Li54:   mov     al, ah                  ; Farbe laden
+        xor     [es:di], al             ; Punkt setzen
+        loopcx  Li52                    ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Li56:   dec     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li53
+
+Li57:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li54
+
+; ----------------------------------------------------
+; Berechnung von Y = f(X) mit Scanline-Offset -BytesPerLine
+
+Line20: mov     cx, si                  ; Loopcount = DeltaX
+        jcxz    Line28                  ; Count = 0 ?
+        mov     bp, si
+        neg     bp                      ; Sum := -DeltaY
+        add     si, si                  ; 2 * DeltaX
+        add     bx, bx                  ; 2 * DeltaY
+
+        cmp     [WriteMode], 00         ; XORMode ?
+        jnz     Line60                  ; ja
+
+        mov     al, [DrawingColor]      ; Nein: Farbe laden
+        cmp     dx, 0FFFFh              ; Durchgezogene Linie ?
+        jz      Li20                    ; Ja: Sonderfall
+
+Even
+Line22: inc     di                      ; X := X + 1
+        jz      Line26                  ; öberlauf
+Line23: add     bp, bx                  ; Sum := Sum + 2 * DeltaY
+        js      Line24                  ; Skip wenn Sum < 0
+        sub     bp, si                  ; sum := sum - 2 * DeltaX
+        sub     di, [BytesPerLine]      ; Y := Y - 1
+        jc      Line27
+Even
+Line24: ror     dx, 1                   ; Punkt setzen ?
+        jnc     Line25                  ; Nein
+        mov     [es:di], al             ; Punkt setzen
+Even
+Line25: loopcx  Line22                  ; NÑchster Punkt
+Line28: add     sp, LocalSize
+        ret
+
+
+; Segment-öberlauf korrigieren
+
+Line26: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line23
+
+Line27: dec     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line24
+
+
+; Sonderfall durchgezogene Linie
+
+Li20:   mov     dx, [BytesPerLine]
+
+EVEN
+Li22:   inc     di                      ; X := X + 1
+        jz      Li26                    ; öberlauf
+Li23:   add     bp, bx                  ; Sum := Sum + 2 * DeltaY
+        js      Li24                    ; Skip wenn Sum < 0
+        sub     bp, si                  ; sum := sum - 2 * DeltaX
+        sub     di, dx                  ; Y := Y - 1
+        jc      Li27
+EVEN
+Li24:   mov     [es:di], al             ; Punkt setzen
+        loopcx  Li22                    ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+
+; Segment-öberlauf korrigieren
+
+Li26:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li23
+
+Li27:   dec     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li24
+
+
+; -------------------------------------
+; Dasselbe nochmal mit XORMode
+
+Line60: mov     ah, [DrawingColor]      ; Farbe nach ah
+        cmp     dx, 0FFFFh              ; Durchgezogene Linie ?
+        jz      Li60                    ; Ja: Sonderfall
+
+Even
+Line62: inc     di                      ; X := X + 1
+        jz      Line66                  ; öberlauf
+Line63: add     bp, bx                  ; Sum := Sum + 2 * DeltaY
+        js      Line64                  ; Skip wenn Sum < 0
+        sub     bp, si                  ; sum := sum - 2 * DeltaX
+        sub     di, [BytesPerLine]      ; Y := Y - 1
+        jc      Line67
+Even
+Line64: ror     dx, 1                   ; Punkt setzen ?
+        jnc     Line65                  ; Nein
+        mov     al, ah                  ; Farbe laden
+        xor     [es:di], al             ; Punkt setzen
+Even
+Line65: loopcx  Line62                  ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Line66: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line63
+
+Line67: dec     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line64
+
+; Sonderfall durchgezogene Linie
+
+Li60:   mov     dx, [BytesPerLine]
+
+EVEN
+Li62:   inc     di                      ; X := X + 1
+        jz      Li66                    ; öberlauf
+Li63:   add     bp, bx                  ; Sum := Sum + 2 * DeltaY
+        js      Li64                    ; Skip wenn Sum < 0
+        sub     bp, si                  ; sum := sum - 2 * DeltaX
+        sub     di, dx                  ; Y := Y - 1
+        jc      Li67
+EVEN
+Li64:   mov     al, ah                  ; Farbe laden
+        xor     [es:di], al             ; Punkt setzen
+        loopcx  Li62                    ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Li66:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li63
+
+Li67:   dec     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li64
+
+; -----------------------------------------
+; Wenn DeltaX > DeltaY dann berechne Y = f(X)
+
+Line5:  cmp     si, bx
+        jg      Line40
+
+; ----------------------------------------------------
+; Berechnung von X = f(Y) mit Scanline-Offset BytesPerLine
+
+        mov     cx, bx                  ; Loopcount = DeltaY
+        jcxz    Line38                  ; Count = 0 ?
+        mov     bp, bx
+        neg     bp                      ; Sum := -DeltaY
+        add     si, si                  ; 2 * DeltaX
+        add     bx, bx                  ; 2 * DeltaY
+
+        cmp     [WriteMode], 00         ; XORMode ?
+        jnz     Line70                  ; ja
+
+        mov     al, [DrawingColor]      ; Nein: Farbe laden
+        cmp     dx, 0FFFFh              ; Durchgezogene Linie ?
+        jz      Li30                    ; Ja: Sonderfall
+
+Even
+Line32: add     di, [BytesPerLine]      ; Y := Y + 1
+        jc      Line36                  ; Segment-öberlauf
+Line33: add     bp, si                  ; Sum := Sum + 2 * DeltaX
+        js      Line34                  ; Skip wenn Sum < 0
+        sub     bp, bx                  ; Sum := Sum - 2 * DeltaY
+        inc     di                      ; X := X + 1
+        jz      Line37                  ; Segment-öberlauf
+Even
+Line34: ror     dx, 1                   ; Punkt setzen ?
+        jnc     Line35                  ; Nein
+        mov     [es:di], al             ; Punkt setzen
+Even
+Line35: loopcx  Line32                  ; NÑchster Punkt
+Line38: add     sp, LocalSize
+        ret
+
+
+; Segment-öberlauf korrigieren
+
+Line36: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line33
+
+Line37: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line34
+
+; Sonderfall fÅr durchgezogene Linie
+
+Li30:   mov     dx, [BytesPerLine]
+
+Even
+Li32:   add     di, dx                  ; Y := Y + 1
+        jc      Li36                    ; Segment-öberlauf
+Li33:   add     bp, si                  ; Sum := Sum + 2 * DeltaX
+        js      Li34                    ; Skip wenn Sum < 0
+        sub     bp, bx                  ; Sum := Sum - 2 * DeltaY
+        inc     di                      ; X := X + 1
+        jz      Li37                    ; Segment-öberlauf
+Even
+Li34:   mov     [es:di], al             ; Punkt setzen
+        loopcx  Li32                    ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+
+; Segment-öberlauf korrigieren
+
+Li36:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li33
+
+Li37:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li34
+
+; ------------------------------------------
+; Dasselbe nochmal mit XORMode
+
+Line70: mov     ah, [DrawingColor]      ; Farbe nach ah
+        cmp     dx, 0FFFFh              ; Durchgezogene Linie ?
+        jz      Li70                    ; Ja: Sonderfall
+
+Even
+Line72: add     di, [BytesPerLine]      ; Y := Y + 1
+        jc      Line76                  ; Segment-öberlauf
+Line73: add     bp, si                  ; Sum := Sum + 2 * DeltaX
+        js      Line74                  ; Skip wenn Sum < 0
+        sub     bp, bx                  ; Sum := Sum - 2 * DeltaY
+        inc     di                      ; X := X + 1
+        jz      Line77                  ; Segment-öberlauf
+EVEN
+Line74: ror     dx, 1                   ; Punkt setzen ?
+        jnc     Line75                  ; Nein
+        mov     al, ah                  ; Farbe laden
+        xor     [es:di], al             ; Punkt setzen
+EVEN
+Line75: loopcx  Line72                  ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Line76: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line73
+
+Line77: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line74
+
+; Sonderfall fÅr durchgezogene Linie
+
+Li70:   mov     dx, [BytesPerLine]
+
+EVEN
+Li72:   add     di, dx                  ; Y := Y + 1
+        jc      Li76                    ; Segment-öberlauf
+Li73:   add     bp, si                  ; Sum := Sum + 2 * DeltaX
+        js      Li74                    ; Skip wenn Sum < 0
+        sub     bp, bx                  ; Sum := Sum - 2 * DeltaY
+        inc     di                      ; X := X + 1
+        jz      Li77                    ; Segment-öberlauf
+EVEN
+Li74:   mov     al, ah                  ; Farbe laden
+        xor     [es:di], al             ; Punkt setzen
+        loopcx  Li72                    ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Li76:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li73
+
+Li77:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li74
+
+; ----------------------------------------------------
+; Berechnung von Y = f(X) mit Scanline-Offset BytesPerLine
+
+Line40: mov     cx, si                  ; Loopcount = DeltaX
+        jcxz    Line48                  ; Count = 0 ?
+        mov     bp, si
+        neg     bp                      ; Sum := -DeltaY
+        add     si, si                  ; 2 * DeltaX
+        add     bx, bx                  ; 2 * DeltaY
+
+        cmp     [WriteMode], 00         ; XORMode ?
+        jnz     Line80                  ; ja
+
+        mov     al, [DrawingColor]      ; Nein: Farbe laden
+        cmp     dx, 0FFFFh              ; Durchgezogene Linie ?
+        jz      Li40                    ; Ja: Sonderfall
+
+EVEN
+Line42: inc     di                      ; X := X + 1
+        jz      Line46                  ; öberlauf
+Line43: add     bp, bx                  ; Sum := Sum + 2 * DeltaY
+        js      Line44                  ; Skip wenn Sum < 0
+        sub     bp, si                  ; sum := sum - 2 * DeltaX
+        add     di, [BytesPerLine]      ; Y := Y + 1
+        jc      Line47
+EVEN
+Line44: ror     dx, 1                   ; Punkt setzen ?
+        jnc     Line45                  ; Nein
+        mov     [es:di], al             ; Punkt setzen
+EVEN
+Line45: loopcx  Line42                  ; NÑchster Punkt
+Line48: add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Line46: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line43
+
+Line47: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line44
+
+; Sonderfall fÅr durchgezogene Linie
+
+Li40:   mov     dx, [BytesPerLine]
+
+EVEN
+Li42:   inc     di                      ; X := X + 1
+        jz      Li46                    ; öberlauf
+Li43:   add     bp, bx                  ; Sum := Sum + 2 * DeltaY
+        js      Li44                    ; Skip wenn Sum < 0
+        sub     bp, si                  ; sum := sum - 2 * DeltaX
+        add     di, dx                  ; Y := Y + 1
+        jc      Li47
+EVEN
+Li44:   mov     [es:di], al             ; Punkt setzen
+        loopcx  Li42                    ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Li46:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li43
+
+Li47:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li44
+
+
+; -------------------------------------
+; Dasselbe nochmal mit XORMode
+
+Line80: mov     ah, [DrawingColor]      ; Farbe nach ah
+        cmp     dx, 0FFFFh              ; Durchgezogene Linie ?
+        jz      Li80                    ; Ja: Sonderfall
+
+Even
+Line82: inc     di                      ; X := X + 1
+        jz      Line86                  ; öberlauf
+Line83: add     bp, bx                  ; Sum := Sum + 2 * DeltaY
+        js      Line84                  ; Skip wenn Sum < 0
+        sub     bp, si                  ; sum := sum - 2 * DeltaX
+        add     di, [BytesPerLine]      ; Y := Y + 1
+        jc      Line87
+Even
+Line84: ror     dx, 1                   ; Punkt setzen ?
+        jnc     Line85                  ; Nein
+        mov     al, ah                  ; Farbe laden
+        xor     [es:di], al             ; Punkt setzen
+Even
+Line85: loopcx  Line82                  ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Line86: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line83
+
+Line87: inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Line84
+
+; Sonderfall durchgezogene Linie
+
+Li80:   mov     dx, [BytesPerLine]
+
+EVEN
+Li82:   inc     di                      ; X := X + 1
+        jz      Li86                    ; öberlauf
+Li83:   add     bp, bx                  ; Sum := Sum + 2 * DeltaY
+        js      Li84                    ; Skip wenn Sum < 0
+        sub     bp, si                  ; sum := sum - 2 * DeltaX
+        add     di, dx                  ; Y := Y + 1
+        jc      Li87
+EVEN
+Li84:   mov     al, ah                  ; Farbe laden
+        xor     [es:di], al             ; Punkt setzen
+        loopcx  Li82                    ; NÑchster Punkt
+        add     sp, LocalSize
+        ret
+
+; Segment-öberlauf korrigieren
+
+Li86:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li83
+
+Li87:   inc     [Seg64]
+        call    [SegSelect]             ; öberlauf korrigieren
+        jmp     Li84
+
+ENDP    Vect
+
+

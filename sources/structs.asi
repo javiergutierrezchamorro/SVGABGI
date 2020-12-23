@@ -1,0 +1,95 @@
+; *****************************************************************************
+; *                                                                           *
+; *                Datenstrukturen fÅr den SVGA.BGI Treiber                   *
+; *                                                                           *
+; * (C) 1990-94                                                               *
+; * Ullrich von Bassewitz                                                     *
+; * ZwehrenbÅhlstra·e 33                                                      *
+; * D-72070 TÅbingen                                                          *
+; *                                                                           *
+; * E-Mail: uz@ibb.schwaben.de                                                *
+; *                                                                           *
+; *****************************************************************************
+
+
+
+; Struktur der Device-Status-Table
+
+STRUC   Status
+
+        Stat            db      grOk    ; Current Device Status (0 = No Errors)
+        DevTyp          db      0       ; Device Type Identifier (must be 0)
+        XRes            dw      ?       ; Device Full Resolution in X Direction
+        YRes            dw      ?       ; Device Full Resolution in Y Direction
+        XEfRes          dw      ?       ; Device Effective X Resolution
+        YEfRes          dw      ?       ; Device Effective Y Resolution
+        XInch           dw      10000   ; Device X Size in inches*1000
+        YInch           dw      7500    ; Device Y Size in inches*1000
+        Aspec           dw      ?       ; Aspect Ratio = (y_size/x_size) * 10000
+        CharSizeX       db      8       ; Zeichenhîhe
+        CharSizeY       db      8       ; Zeichenbreite
+        Compat          dw      9090h   ; Compatibility Value
+
+ENDS    Status
+
+
+
+; Tabellenstruktur fÅr alle wichtigen Werte einer Betriebsart
+
+STRUC   TMode
+
+        XRes            dw      ?       ; Anzahl Pixel in X-Richtung
+        YRes            dw      ?       ; Anzahl Pixel in Y-Richtung
+        ModeName        dw      ?       ; Zeiger auf String mit Name
+        BIOSax          dw      ?       ; Register ax fÅr BIOS-Aufruf oder sonstiges
+        BIOSbx          dw      ?       ; Register bx fÅr BIOS-Aufruf oder sonstiges
+        CardType        db      ?       ; Nummer der Karte
+        Capabilities    db      ?       ; BitSet der unterstÅtzten Modes
+        GraphOn         dw      ?       ; zusÑtzliche spezifische Umschaltroutine
+
+ENDS    TMode
+
+
+; VESA-Infoblock
+
+STRUC   VESA_InfoBlock
+
+        Mode_Attributes         dw      ?       ; Attribute des Modus
+        Win_A_Attributes        db      ?       ; Attribute von Fenster A
+        Win_B_Attributes        db      ?       ; dito, Fenster B
+        Win_Granularity         dw      ?       ; Fenster-GranularitÑt in KB
+        Win_Size                dw      ?       ; Fenstergrî·e in KB
+        Win_A_Segment           dw      ?       ; Segmentadresse Fenster A
+        Win_B_Segment           dw      ?       ; Segmentadresse Fenster B
+        WinFunc                 dd      ?       ; Zeiger auf Umschaltroutine
+        BytesPerLine            dw      ?       ; Bytes pro Zeile
+
+ENDS    VESA_InfoBlock
+
+
+; Real-Mode Regs Struktur fÅr Real-Mode INTs aus dem Protected-Mode
+
+STRUC   RealModeRegs
+
+        rDI             dw      0, 0
+        rSI             dw      0, 0
+        rPB             dw      0, 0
+        rRes            dw      0, 0
+        rBX             dw      0, 0
+        rDX             dw      0, 0
+        rCX             dw      0, 0
+        rAX             dw      0, 0
+        rFlags          dw      0
+        rES             dw      0
+        rDS             dw      0
+        rFS             dw      0
+        rGS             dw      0
+        rIP             dw      0
+        rCS             dw      0
+        rSP             dw      0
+        rSS             dw      0
+
+ENDS    RealModeRegs
+
+
+
