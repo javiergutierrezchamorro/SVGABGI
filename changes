@@ -161,5 +161,7 @@ Version                 Žnderungen
 			-  Applied some speed and size optimizations:
 			   BGIBENCH SVGA 5
 			   SVGA 3.51A:   196.25     n/a  188.55
-			   SVGA 4.00:    196.25  195.15  185.60
+			   SVGA 4.00:    194.55  193.40  184.80
 
+
+
