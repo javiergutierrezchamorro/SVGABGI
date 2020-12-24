@@ -133,8 +133,13 @@ PROC    ScanRight
 ; Zweite (bzw. einzige) HÑlfte scannen
 
 @@L1:   repne   scasb
-@@L2:   dec     di                      ; Auf das gefundene Byte stellen
-        dec     di                      ; bzw. davor
+@@L2:
+	IF P80386
+		sub	di, 2
+	ELSE
+		dec     di                      ; Auf das gefundene Byte stellen
+        	dec     di                      ; bzw. davor
+	ENDIF
         add     bx, di                  ; Und passenden X-Wert rechnen
 
 ; Ende
@@ -720,7 +725,7 @@ PROC    FloodFill
  ; Direction aus dem X-Wert extrahieren und FillDir setzen
 
         mov     ax, 1                   ; Dir = 1
-        or      si, si                  ; Flag fÅr Dir negativ ?
+        test    si, si                  ; Flag fÅr Dir negativ ?
         jge     @@L2
         not     si                      ; X
         neg     ax                      ; Dir

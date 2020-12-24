@@ -141,8 +141,8 @@ Line4:  mov     bx, [Y2]
         jcxz    Line18                  ; Count = 0 ?
         mov     bp, bx
         neg     bp                      ; Sum := -DeltaY
-        add     si, si                  ; 2 * DeltaX
-        add     bx, bx                  ; 2 * DeltaY
+        shl     si, 1                   ; 2 * DeltaX
+        shl     bx, 1                  ; 2 * DeltaY
 
         cmp     [WriteMode], 00         ; XORMode ?
         jnz     Line50                  ; ja
@@ -164,7 +164,7 @@ Line14: ror     dx, 1                   ; Punkt setzen ?
         jnc     Line15                  ; Nein
         mov     [es:di], al             ; Punkt setzen
 Even
-Line15: loopcx  Line12                  ; N„chster Punkt
+Line15: LOOPCX  Line12                  ; N„chster Punkt
 Line18: add     sp, LocalSize
         ret
 
@@ -191,7 +191,7 @@ Li13:   add     bp, si                  ; Sum := Sum + 2 * DeltaX
         jz      Li17                    ; Segment-šberlauf
 EVEN
 Li14:   mov     [es:di], al             ; Punkt setzen
-        loopcx  Li12                    ; N„chster Punkt
+        LOOPCX  Li12                    ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -226,7 +226,7 @@ Line54: ror     dx, 1                   ; Punkt setzen ?
         mov     al, ah                  ; Farbe laden
         xor     [es:di], al             ; Punkt setzen
 Even
-Line55: loopcx  Line52                  ; N„chster Punkt
+Line55: LOOPCX  Line52                  ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -255,7 +255,7 @@ Li53:   add     bp, si                  ; Sum := Sum + 2 * DeltaX
 Even
 Li54:   mov     al, ah                  ; Farbe laden
         xor     [es:di], al             ; Punkt setzen
-        loopcx  Li52                    ; N„chster Punkt
+        LOOPCX  Li52                    ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -276,8 +276,8 @@ Line20: mov     cx, si                  ; Loopcount = DeltaX
         jcxz    Line28                  ; Count = 0 ?
         mov     bp, si
         neg     bp                      ; Sum := -DeltaY
-        add     si, si                  ; 2 * DeltaX
-        add     bx, bx                  ; 2 * DeltaY
+        shl     si, 1                   ; 2 * DeltaX
+        shl     bx, 1                   ; 2 * DeltaY
 
         cmp     [WriteMode], 00         ; XORMode ?
         jnz     Line60                  ; ja
@@ -299,7 +299,7 @@ Line24: ror     dx, 1                   ; Punkt setzen ?
         jnc     Line25                  ; Nein
         mov     [es:di], al             ; Punkt setzen
 Even
-Line25: loopcx  Line22                  ; N„chster Punkt
+Line25: LOOPCX  Line22                  ; N„chster Punkt
 Line28: add     sp, LocalSize
         ret
 
@@ -329,7 +329,7 @@ Li23:   add     bp, bx                  ; Sum := Sum + 2 * DeltaY
         jc      Li27
 EVEN
 Li24:   mov     [es:di], al             ; Punkt setzen
-        loopcx  Li22                    ; N„chster Punkt
+        LOOPCX  Li22                    ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -366,7 +366,7 @@ Line64: ror     dx, 1                   ; Punkt setzen ?
         mov     al, ah                  ; Farbe laden
         xor     [es:di], al             ; Punkt setzen
 Even
-Line65: loopcx  Line62                  ; N„chster Punkt
+Line65: LOOPCX  Line62                  ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -395,7 +395,7 @@ Li63:   add     bp, bx                  ; Sum := Sum + 2 * DeltaY
 EVEN
 Li64:   mov     al, ah                  ; Farbe laden
         xor     [es:di], al             ; Punkt setzen
-        loopcx  Li62                    ; N„chster Punkt
+        LOOPCX  Li62                    ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -422,8 +422,8 @@ Line5:  cmp     si, bx
         jcxz    Line38                  ; Count = 0 ?
         mov     bp, bx
         neg     bp                      ; Sum := -DeltaY
-        add     si, si                  ; 2 * DeltaX
-        add     bx, bx                  ; 2 * DeltaY
+        shl     si, 1                   ; 2 * DeltaX
+        shl     bx, 1                   ; 2 * DeltaY
 
         cmp     [WriteMode], 00         ; XORMode ?
         jnz     Line70                  ; ja
@@ -445,7 +445,7 @@ Line34: ror     dx, 1                   ; Punkt setzen ?
         jnc     Line35                  ; Nein
         mov     [es:di], al             ; Punkt setzen
 Even
-Line35: loopcx  Line32                  ; N„chster Punkt
+Line35: LOOPCX  Line32                  ; N„chster Punkt
 Line38: add     sp, LocalSize
         ret
 
@@ -474,7 +474,7 @@ Li33:   add     bp, si                  ; Sum := Sum + 2 * DeltaX
         jz      Li37                    ; Segment-šberlauf
 Even
 Li34:   mov     [es:di], al             ; Punkt setzen
-        loopcx  Li32                    ; N„chster Punkt
+        LOOPCX  Li32                    ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -510,7 +510,7 @@ Line74: ror     dx, 1                   ; Punkt setzen ?
         mov     al, ah                  ; Farbe laden
         xor     [es:di], al             ; Punkt setzen
 EVEN
-Line75: loopcx  Line72                  ; N„chster Punkt
+Line75: LOOPCX  Line72                  ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -539,7 +539,7 @@ Li73:   add     bp, si                  ; Sum := Sum + 2 * DeltaX
 EVEN
 Li74:   mov     al, ah                  ; Farbe laden
         xor     [es:di], al             ; Punkt setzen
-        loopcx  Li72                    ; N„chster Punkt
+        LOOPCX  Li72                    ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -560,8 +560,8 @@ Line40: mov     cx, si                  ; Loopcount = DeltaX
         jcxz    Line48                  ; Count = 0 ?
         mov     bp, si
         neg     bp                      ; Sum := -DeltaY
-        add     si, si                  ; 2 * DeltaX
-        add     bx, bx                  ; 2 * DeltaY
+        shl     si, 1                   ; 2 * DeltaX
+        shl     bx, 1                   ; 2 * DeltaY
 
         cmp     [WriteMode], 00         ; XORMode ?
         jnz     Line80                  ; ja
@@ -583,7 +583,7 @@ Line44: ror     dx, 1                   ; Punkt setzen ?
         jnc     Line45                  ; Nein
         mov     [es:di], al             ; Punkt setzen
 EVEN
-Line45: loopcx  Line42                  ; N„chster Punkt
+Line45: LOOPCX  Line42                  ; N„chster Punkt
 Line48: add     sp, LocalSize
         ret
 
@@ -611,7 +611,7 @@ Li43:   add     bp, bx                  ; Sum := Sum + 2 * DeltaY
         jc      Li47
 EVEN
 Li44:   mov     [es:di], al             ; Punkt setzen
-        loopcx  Li42                    ; N„chster Punkt
+        LOOPCX  Li42                    ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -647,7 +647,7 @@ Line84: ror     dx, 1                   ; Punkt setzen ?
         mov     al, ah                  ; Farbe laden
         xor     [es:di], al             ; Punkt setzen
 Even
-Line85: loopcx  Line82                  ; N„chster Punkt
+Line85: LOOPCX  Line82                  ; N„chster Punkt
         add     sp, LocalSize
         ret
 
@@ -676,7 +676,7 @@ Li83:   add     bp, bx                  ; Sum := Sum + 2 * DeltaY
 EVEN
 Li84:   mov     al, ah                  ; Farbe laden
         xor     [es:di], al             ; Punkt setzen
-        loopcx  Li82                    ; N„chster Punkt
+        LOOPCX  Li82                    ; N„chster Punkt
         add     sp, LocalSize
         ret
 
