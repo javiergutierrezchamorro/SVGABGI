@@ -133,7 +133,7 @@ ENDP    Emulate
 PROC    Int10 Near
 
         push    bp
-        cld
+        ;cld
         int     10h
         pop     bp
         ret

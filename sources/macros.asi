@@ -75,7 +75,6 @@ ENDM
 
 MACRO   CalcAdr
 LOCAL   @@L1
-
         add     ax, [PageOfs]           ;; Korrektur fÅr Bildschirmseite
         mul     [BytesPerLine]
         add     ax, bx                  ;; Offset aufaddieren
