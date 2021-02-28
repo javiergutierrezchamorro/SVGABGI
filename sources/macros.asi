@@ -50,7 +50,7 @@ ENDM
 
 MACRO	RepMovS
 IF P80386
-	and     ecx, 0FFFFh
+	;and     ecx, 0FFFFh
 	push    ecx
 	shr     ecx, 2
 	rep	movsd
@@ -71,6 +71,7 @@ IF P80386
 	push	ax
 	push	ax
 	pop	eax
+	;and     ecx, 0FFFFh		
 	push    ecx
 	shr     ecx, 2
 	rep	stosd
