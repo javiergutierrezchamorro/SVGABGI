@@ -635,6 +635,7 @@ Even
         stosw                           ; X-Wert speichern
         lodsw                           ; Y-Wert holen
         stosw                           ; Y-Wert speichern
+        ;movsw							; Y-Wert holen / Y-Wert speichern
         cmp     ax, bx                  ; Y-Wert > YMax ?
         jl      @@L1                    ; Springe wenn Nein
         xchg    ax, bx                  ; šbernehme wenn ja
@@ -2469,10 +2470,10 @@ PB1:    mov     cx, bp                  ; Breite des Rechtecks
         stosb                           ; Punkt setzen
         loopz	PB5						; Breite war 1
 
-PB4:    shr     cx, 1                   ; / 2
-        rep     stosw                   ; Worte setzen bis cx = 0
-        adc     cx, cx                  ; War noch ein Carry ?
-        rep     stosb                   ; šbriges Byte falls cx <> 0
+PB4:    RepStoS		                    ; / 2
+										; Worte setzen bis cx = 0
+										; War noch ein Carry ?
+										; šbriges Byte falls cx <> 0
 
 ; Neue Zeile
 
@@ -3260,10 +3261,7 @@ EPL_Solid:
 
 ; Ersten Teil zeichnen
 
-        shr     cx, 1
-        rep     stosw
-        adc     cx, cx
-        rep     stosb
+		RepStoS
 
 ; N„chstes Segment setzen
 
@@ -3277,10 +3275,7 @@ EPL_Solid:
 
 ; Den zweiten (bzw. einzigen) Teil der Linie zeichnen
 
-@@L2:   shr     cx, 1
-        rep     stosw
-        adc     cx, cx
-        rep     stosb
+@@L2:   RepStoS
 
 ; Fertig !
 
