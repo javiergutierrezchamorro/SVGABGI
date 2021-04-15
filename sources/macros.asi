@@ -14,10 +14,8 @@
 
 
 MACRO   LOOPCX  Lbl
-
         dec     cx
         jnz     Lbl
-
 ENDM    LOOPCX
 
 
@@ -113,21 +111,18 @@ ENDM
 
 
 MACRO   SetToDS Reg
-
 IF      VER3
         mov     Reg, [DSeg]
 ELSE
         push    cs
         pop     Reg
 ENDIF
-
 ENDM
 
 
 
 
 MACRO   RESETCPU
-
 IF      P80386
         P386N
 ELSEIF  P80286

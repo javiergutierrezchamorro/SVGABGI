@@ -635,7 +635,6 @@ Even
         stosw                           ; X-Wert speichern
         lodsw                           ; Y-Wert holen
         stosw                           ; Y-Wert speichern
-        ;movsw							; Y-Wert holen / Y-Wert speichern
         cmp     ax, bx                  ; Y-Wert > YMax ?
         jl      @@L1                    ; Springe wenn Nein
         xchg    ax, bx                  ; öbernehme wenn ja
@@ -1655,7 +1654,7 @@ PROC    RestoreTrans    NEAR
 
 @@L1:   mov     al, [si]                ; Byte holen
         inc     si
-        test     al, al                   ; = 0
+        test    al, al                   ; = 0
         jz      @@L3                    ; Dann nicht schreiben
         mov     [es:di], al             ; Byte schreiben
         inc     di
@@ -1847,7 +1846,7 @@ PROC    Palette   Near
 ; Bits 11, bx ist Hintergrundfarbe
 
         mov     bh, bl                  ; Farbe in bh
-        xor     bl,bl                   ; Index fÅr Hintergrund ist 0
+        xor     bl, bl                  ; Index fÅr Hintergrund ist 0
         mov     [BkColor], bh           ; Hintergrundfarbe merken
 @@L2:   mov     ax, 1000h               ; Setze Palettenregister
         int     10h

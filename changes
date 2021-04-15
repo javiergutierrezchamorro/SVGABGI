@@ -156,7 +156,7 @@ Version                 énderungen
                         sind (das ist bei der Ansteuerung Åber VESA-Treiber
                         z.T. der Fall).
 
-4.00	28.02.2020	- Made it possible to assembly with TASM 5.
+4.00	15.04.2021	- Made it possible to assembly with TASM 5.
 			- Included neccessary Borland tools.
 			- Added 286 optimized BGI/BP7 drivers.
 			-  Applied some speed and size optimizations:
