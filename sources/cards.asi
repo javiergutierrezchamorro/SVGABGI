@@ -804,7 +804,7 @@ PROC    S3_VisualPage
 ; Offset um den Faktor 4 kleiner, es mussen als (virtuell) 2 Zeilen addiert
 ; werden.
 
-        sub     bx, bx
+        xor     bx, bx
         test    ax, ax                  ; Seite = 0 ?
         jz      @@L1                    ; Ja: Offset 0
         call    CalcPageOffset          ; Seiten-Offset nach bx:ax

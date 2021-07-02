@@ -633,6 +633,7 @@ Even
 ; Der Punkt ist gÅltig, prÅfen ob er als Maximum oder Minimum in Frage kommt.
 
         stosw                           ; X-Wert speichern
+        ;movsw							; Y-Wert holen / Y-Wert speichern
         lodsw                           ; Y-Wert holen
         stosw                           ; Y-Wert speichern
         cmp     ax, bx                  ; Y-Wert > YMax ?
@@ -650,12 +651,7 @@ Even
 ; Der Punkt ist ungÅltig und wird beim Kopieren Åbersprungen
 
 @@L3:   
-		IF P80386
-		    add     si, 2	; Y-Wert ignorieren
-		ELSE
-			inc     si
-	        inc     si	; Y-Wert ignorieren
-		ENDIF
+		add2     si	; Y-Wert ignorieren
         dec     [Count]                 ; Ein Punkt weniger
         jmp     @@L0                    ; und nÑchster Punkt
 
@@ -1519,12 +1515,7 @@ IF P80386
         jnc     @@L2                    ;; Nein
         lodsw                           ;; Ja: Wort verarbeiten
         OP      [WORD es:di], ax
-		IF P80386        
-			add     di, 2
-		ELSE
-        	inc     di
-        	inc     di
-    	ENDIF
+        Add2	di
 @@L2:   jcxz    @@L7
 
 ALIGN 4
@@ -1538,12 +1529,7 @@ ELSE
 ALIGN 4
 @@L2:   lodsw                           ;; Wort holen
         OP      [WORD es:di], ax        ;; XORen
-		IF P80386
-			add     di, 2	; nÑchstes Wort adressieren
-		ELSE
-			inc     di
-	        inc     di	; Y-Wert ignorieren
-		ENDIF
+        Add2	di						; nÑchstes Wort adressieren
         loop	@@L2
         ret
 ENDIF

@@ -36,6 +36,28 @@ ENDIF
 ENDM
 
 
+MACRO	Add2 Reg
+	IF P80386        
+		add     Reg, 2
+	ELSE
+		inc     Reg
+		inc     Reg
+ENDIF
+ENDM
+
+MACRO	Sub2 Reg
+	IF P80386        
+		sub	Reg, 2
+	ELSE
+		dec     Reg
+		dec     Reg
+ENDIF
+ENDM
+
+
+
+
+
 MACRO   LeaveProc
 IF P80286
         leave

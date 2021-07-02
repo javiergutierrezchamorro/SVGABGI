@@ -51,7 +51,7 @@ PROC    GetOpts       NEAR
         jz      @@L4                    ; Eintrag gefunden !
         dec     si                      ; Sonst ein Zeichen zurÅck
 @@L3:   lodsb                           ; Und nach abschlie·ender 0 suchen
-        or      al, al                  ; 0 (= Ende) ?
+        test    al, al                  ; 0 (= Ende) ?
         jnz     @@L3                    ; Nein, weitersuchen
         cmp     al, [BYTE si]           ; Zweite 0 (= Tabellenende) ?
         jne     @@L2                    ; Nein, weitersuchen
@@ -65,7 +65,7 @@ PROC    GetOpts       NEAR
 
 @@L4:   xor     di, di                  ; Optionen
 @@L5:   lodsb                           ; Zeichen holen
-        or      al, al                  ; String-Ende ?
+        test    al, al                  ; String-Ende ?
         jz      @@L99                   ; Springe wenn ja
         cmp     al, 'F'                 ; OpFastVESAOff ?
         jnz     @@L6
