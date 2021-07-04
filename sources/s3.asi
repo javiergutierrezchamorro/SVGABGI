@@ -114,8 +114,13 @@ PROC    S3_Vect Near
         mov     ax, 25h                 ; XOR mode
 @@L2:   S3_Out  FRGD_MIX
 
-        mov     al, [DrawingColor]
-        xor     ah, ah
+	IF P80386        
+		mov     ax, [DrawingColor]
+	ELSE
+	        mov     al, [DrawingColor]
+        	xor     ah, ah
+	ENDIF
+
         S3_Out  FRGD_COLOR
 
 ; Jetzt durchgezogene/gestrichelte Linien unterscheiden
@@ -176,8 +181,12 @@ PROC    S3_Vect Near
 @@L5:   mov     ax, 3
         S3_Out  BKGD_MIX
 
-        mov     al, [BkColor]
-        xor     ah, ah
+	IF P80386        
+		movzx    ax, [BkColor]
+	ELSE
+	        mov     al, [BkColor]
+        	xor     ah, ah
+	ENDIF
         S3_Out  BKGD_COLOR
 
 ; Mask data selecting mix register provided by cpu
@@ -269,7 +278,7 @@ PROC    S3_Clear NEAR
 
         mov     ax, 0027h
         S3_Out  FRGD_MIX
-        sub     ax, ax
+        xor     ax, ax
         S3_Out  FRGD_COLOR
         mov     ax, 0A000h
         S3_Out  MULTIFUNC_CNTL
@@ -278,7 +287,7 @@ PROC    S3_Clear NEAR
 
         S3_Wait 5
 
-        sub     ax, ax
+        xor     ax, ax
         S3_Out  CUR_X
         mov     ax, [PageOfs]
         S3_Out  CUR_Y
@@ -318,7 +327,7 @@ PROC    S3_FillStyle    NEAR
 ; Offset fÅr die Schreibseite auf 0 setzen
 
         push    [PageOfs]
-        sub     ax, ax
+        xor     ax, ax
         mov     [PageOfs], ax
         mov     bx, [MaxY]
         mov     cx, 7
@@ -358,12 +367,12 @@ PROC    S3_PatBar       NEAR
 ; Die Umtauscherei am Anfang ist leider notwendig, wenn auch nicht
 ; dokumentiert...
 
-        cmp     ax,cx
+        cmp     ax, cx
         jb      @@L1
-        xchg    ax,cx
-@@L1:   cmp     bx,dx
+        xchg    ax, cx
+@@L1:   cmp     bx, dx
         jb      @@L2
-        xchg    bx,dx
+        xchg    bx, dx
 
 ; X1/Y1, X2/Y2 in X/Y und Hîhe/Breite umrechnen
 
@@ -390,7 +399,7 @@ PROC    S3_PatBar       NEAR
 
         S3_Wait 7
 
-        sub     ax, ax
+        xor     ax, ax
         S3_Out  CUR_X
         mov     ax, [MaxY]
         S3_Out  CUR_Y
@@ -417,7 +426,7 @@ PROC    S3_PatBar       NEAR
         mov     ax, 0027h
         S3_Out  FRGD_MIX
 
-        sub     ax, ax
+        xor     ax, ax
         cmp     [FillPatternNum], EmptyFill
         jz      @@L4
         mov     al, [FillColor]
@@ -471,9 +480,13 @@ PROC    S3_HorLineInit  NEAR
 
         mov     ax, 27h                 ; Normal mode
         S3_Out  FRGD_MIX
+	IF P80386        
+		movzx     ax, [FillColor]
+	ELSE
+	        mov     al, [FillColor]
+        	xor     ah, ah
+	ENDIF
 
-        mov     al, [FillColor]
-        xor     ah, ah
         S3_Out  FRGD_COLOR
 
 ; Background Mix und Hintergrundfarbe setzen
@@ -481,8 +494,13 @@ PROC    S3_HorLineInit  NEAR
         mov     ax, 07h
         S3_Out  BKGD_MIX
 
-        mov     al, [BkColor]
-        xor     ah, ah
+	IF P80386        
+		movzx     ax, [BkColor]
+	ELSE
+	        mov     al, [BkColor]
+        	xor     ah, ah
+	ENDIF
+
         S3_Out  BKGD_COLOR
 
 ; Mask data selecting mix register provided by cpu
@@ -544,7 +562,7 @@ PROC    S3_HorLine      NEAR
 
 ; DESTY_AXSTP = 2 * Min
 
-        sub     ax, ax                  ; Min = 0
+        xor     ax, ax                  ; Min = 0
         S3_Out  DESTY_AXSTP
 
         mov     ax, cx                  ; ax = -Max

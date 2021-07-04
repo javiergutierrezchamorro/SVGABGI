@@ -127,7 +127,7 @@ PROC    CheckParadise NEAR
         out     dx, ax                  ; einstellen
         xor     bh, [BYTE es:di]        ; Testwert 2 prÅfen
         mov     [BYTE es:di], ch        ; Orginalwert setzen
-        or      bx, bx                  ; bx mÅsste jetzt 0 sein wg. XOR
+        test    bx, bx                  ; bx mÅsste jetzt 0 sein wg. XOR
         ret
 
 ENDP    CheckParadise
@@ -152,8 +152,12 @@ Local   Card:WORD, VideoMode: BYTE = LocalSize
         mov     ax, 13h
         call    Int10
 
-        mov     bl, [BYTE LOW Card]
-        xor     bh, bh
+	IF P80386        
+		movzx   bx, [BYTE LOW Card]
+	ELSE
+		mov     bl, [BYTE LOW Card]
+        	xor     bh, bh
+	ENDIF
         shl     bx, 1
         mov     bx, [SegSwitchTable+bx] ; Adresse der Umschaltroutine
 
@@ -188,8 +192,13 @@ Local   Card:WORD, VideoMode: BYTE = LocalSize
 
 ; Alten Videomodus wiederherstellen
 
-        mov     al, [VideoMode]         ; Orginaler Videomodus
-        xor     ah, ah                   ; = Setze Modus
+	IF P80386        
+		movzx     ax, [VideoMode]
+	ELSE
+	        mov     al, [VideoMode]          ; Orginaler Videomodus
+        	xor     ah, ah                   ; = Setze Modus
+	ENDIF
+
         push    bx                      ; Karte/Modi retten
         call    Int10
         pop     bx
@@ -353,7 +362,7 @@ NoS3:   mov     es, [SegC000]
         mov     si, OFFSET ATI_Modes
         mov     bx, (M320x200) * 256 + ATIVGA
 @@L3:   lodsb                           ; Mode-Nr holen
-        or      al, al                  ; Ende?
+        test    al, al                  ; Ende?
         jz      AutoDetectEnd           ; Springe wenn ja
         push    ds
         push    bx

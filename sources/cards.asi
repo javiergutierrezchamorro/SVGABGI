@@ -125,9 +125,7 @@ ENDIF
         out     dx, al
 
 ; Bank 2 Bit
-
-        inc     dx
-        inc     dx                      ; dx = 3c4h
+	Add2	dx			; dx = 3c4h
         mov     al, 0F6h
         out     dx, al
 

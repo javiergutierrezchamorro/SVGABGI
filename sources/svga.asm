@@ -169,7 +169,7 @@ PROC    Install NEAR
 
 @@L1:   push    ds
         pop     es
-        cmp     al,02h                          ; Mode Name ?
+        cmp     al, 02h                         ; Mode Name ?
         jnz     InstallDevice                   ; Nein
         jcxz    @@L3                            ; Modus 0
         cmp     cx, MaxAutoMode
@@ -405,8 +405,12 @@ ENDIF
 
 ; Hintergrundfarbe als Paletteneintrag 0 setzen
 
-        mov     bl, [BkColor]
-        xor     bh, bh
+		IF P80386        
+			movzx     bx, [BkColor]
+		ELSE
+	        mov     bl, [BkColor]
+	        xor     bh, bh
+		ENDIF
         mov     ax, 0C000h              ; Code fÅr: Setze Hintergrund
         call    Palette                 ; "Palette"
 
@@ -651,7 +655,7 @@ Even
 ; Der Punkt ist ungÅltig und wird beim Kopieren Åbersprungen
 
 @@L3:   
-		add2     si	; Y-Wert ignorieren
+		add2    si						; Y-Wert ignorieren
         dec     [Count]                 ; Ein Punkt weniger
         jmp     @@L0                    ; und nÑchster Punkt
 
@@ -877,8 +881,9 @@ PROC    FillStyle Near
 IF P80286
         shl     ax, 3
 ELSE
-        mov     cl, 3
-        shl     ax, cl                  ; * 8
+		shl     ax, 1
+		shl     ax, 1
+        shl     ax, 1                  ; * 8
 ENDIF
         xchg    si, ax                  ; xchg statt mov
         add     si, OFFSET FillPatternTable
@@ -1039,15 +1044,15 @@ Local   YMult: Word, Diff: Word = LocalSize
         mov     di, [Clip_X2]
         sub     di, [TextSizeX]
         inc     di
-        cmp     bx,di
+        cmp     bx, di
         ja      OutCharEnd
 
         cmp     cx, [Clip_Y1]
         jb      OutCharEnd
-        mov     di,[Clip_Y2]
+        mov     di, [Clip_Y2]
         sub     di, [TextSizeY]
         inc     di
-        cmp     cx,di
+        cmp     cx, di
         ja      OutCharEnd
 
 ; Adresse des ersten Punktes rechnen
@@ -1155,12 +1160,12 @@ PROC    Text    Near
         call    [GE_Ready]              ; Warten bis die GE fertig ist
         cmp     [TextOrient], 01h       ; 90¯ gedreht ?
         jne     CharLoop
-        add     bx,cx
+        add     bx, cx
         dec     bx
 
 CharLoop:
         mov     al, [es:bx]             ; Zeichen vom String
-        and     al,al                   ; 0 ?
+        and     al, al                  ; 0 ?
         jz      TextEnd                 ; dann Ende
         push    es
         push    bx
@@ -1233,18 +1238,18 @@ PROC    TextStyle Near
 IF P80286
         shr     bl, 3
 ELSE
-        shr     bl,1
-        shr     bl,1
-        shr     bl,1                    ; / 8
+        shr     bl, 1
+        shr     bl, 1
+        shr     bl, 1                   ; / 8
 ENDIF
         mov     [Byte low TextMultX], bl
 
 IF P80286
         shr     cl, 3
 ELSE
-        shr     cl,1
-        shr     cl,1
-        shr     cl,1                    ; / 8
+        shr     cl, 1
+        shr     cl, 1
+        shr     cl, 1                    ; / 8
 ENDIF
         mov     [Byte low TextMultY], cl
 
@@ -1820,13 +1825,13 @@ PROC    Palette   Near
 
 ; Bits 00, bx = Farbe, ax = Index
 
-        mov     bh,bl
-        mov     bl,al           ; bl = Index, bh = Color
+        mov     bh, bl
+        mov     bl, al           ; bl = Index, bh = Color
         jmp     @@L2
 
 ; Bits 10 oder 11
 
-@@L1:   test    ah,40h
+@@L1:   test    ah, 40h
         jz      RGBPalette
 
 ; Bits 11, bx ist Hintergrundfarbe
@@ -2126,8 +2131,14 @@ PROC    SetDrawPage FAR
 ; Kartenspezifische Routine aufrufen
 
         mov     bx, [ModePtr]                   ; Zeiger auf Modus-Deskriptor
-        mov     bl, [(TMode bx).CardType]       ; Kartentyp holen
-        xor     bh, bh                           ; ... nach bx
+        
+		IF P80386        
+			movzx     bl, [(TMode bx).CardType]       ; Kartentyp holen
+		ELSE
+	        mov     bl, [(TMode bx).CardType]       ; Kartentyp holen
+    	    xor     bh, bh                           ; ... nach bx
+		ENDIF
+      
         shl     bx, 1                           ; * 2 fÅr Wortzugriff
         call    [SetDrawPageTable+bx]           ; kartenspezifischer Aufruf
 
@@ -2145,8 +2156,15 @@ PROC    SetVisualPage FAR
 ; Kartenspezifische Routine aufrufen
 
         mov     bx, [ModePtr]                   ; Zeiger auf Modus-Deskriptor
-        mov     bl, [(TMode bx).CardType]       ; Kartentyp holen
-        xor     bh, bh                           ; ... nach bx
+        
+		IF P80386        
+			movzx   bx, [(TMode bx).CardType]
+		ELSE
+	        mov     bl, [(TMode bx).CardType]       ; Kartentyp holen
+	        xor     bh, bh                           ; ... nach bx
+		ENDIF
+
+        
         shl     bx, 1                           ; * 2 fÅr Wortzugriff
         call    [SetVisualPageTable+bx]         ; kartenspezifischer Aufruf
 
@@ -2250,12 +2268,12 @@ Local BX1:Word, BY1:Word, Diff:Word, BHe:Word, BW:Word, Lines:Word, Lines8:Word 
 ; Die Umtauscherei am Anfang ist leider notwendig, wenn auch nicht
 ; dokumentiert...
 
-        cmp     ax,cx
+        cmp     ax, cx
         jb      @@L1
-        xchg    ax,cx
-@@L1:   cmp     bx,dx
+        xchg    ax, cx
+@@L1:   cmp     bx, dx
         jb      @@L2
-        xchg    bx,dx
+        xchg    bx, dx
 @@L2:   mov     [BX1], ax
         mov     [BY1], bx
 
@@ -2284,8 +2302,9 @@ Local BX1:Word, BY1:Word, Diff:Word, BHe:Word, BW:Word, Lines:Word, Lines8:Word 
 IF P80286
         shl     ax, 3
 ELSE
-        mov     cl, 3
-        shl     ax, cl                  ; * 8
+        shl     ax, 1
+        shl     ax, 1
+        shl     ax, 1                   ; * 8
 ENDIF
         mov     [Lines8], ax            ; Bytes fÅr 8 Zeilen
         mov     [Lines], 0000           ; ZeilenzÑhler
@@ -2310,8 +2329,13 @@ ENDIF
 
 ; Zwei SpezialfÑlle abprÅfen: EmptyFill und SolidFill.
 
-        xor     ah, ah                  ; Farbe = Hintergrundfarbe
-        mov     al, [FillColor]
+		IF P80386        
+			movzx     ax, [FillColor]
+		ELSE
+	        xor     ah, ah                  ; Farbe = Hintergrundfarbe
+	        mov     al, [FillColor]
+		ENDIF
+
         cmp     [FillPatternNum], SolidFill
         je      PatBar1                 ; al = SolidFill-Farbe
         xchg    ah, al                  ; al=0, ah=FillColor, Flags=Const

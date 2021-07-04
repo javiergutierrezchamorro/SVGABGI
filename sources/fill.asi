@@ -134,12 +134,7 @@ PROC    ScanRight
 
 @@L1:   repne   scasb
 @@L2:
-	IF P80386
-		sub	di, 2
-	ELSE
-		dec     di                      ; Auf das gefundene Byte stellen
-        	dec     di                      ; bzw. davor
-	ENDIF
+	Sub2	di			;Auf das gefundene Byte stellen bzw. davor
         add     bx, di                  ; Und passenden X-Wert rechnen
 
 ; Ende
@@ -343,7 +338,7 @@ PROC    ScanLine
         cmp     bx, [StackTop]          ; Stack-šberlauf ?
         jae     @@L9                    ; Springe wenn ja
         mov     ax, dx                  ; XR-Wert
-        or      si, si                  ; Direction prfen
+        test    si, si                  ; Direction prfen
         jge     @@L5                    ; Springe wenn R->L
         not     ax                      ; Sonst Flag setzen
 @@L5:   mov     [ss:bx], ax             ; X-Wert auf Stack
@@ -399,7 +394,7 @@ ENDP    ScanLine
 PROC    CheckStack      NEAR
 
         push    bp
-        or      cx, cx
+        test    cx, cx
         jge     @@L1
         not     bx
 @@L1:   mov     bp, StackBot-4          ; Stackstart nach bp
