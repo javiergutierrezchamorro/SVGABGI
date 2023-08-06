@@ -182,10 +182,10 @@ PROC    Install NEAR
 ; Es ist kein Autodetect-Modus
 
 @@L2:   sub     cx, MaxAutoMode
-@@L3:   ;fastimul ax, cx, SIZE TMode
-		mov     ax, SIZE TMode                  ; L„nge eines Tabelleneintrages
-        mul     cx                              ; * Eintragsnummer
-        mov     bx, ax
+@@L3:   fastimul bx, cx, SIZE TMode
+		;mov     ax, SIZE TMode                  ; L„nge eines Tabelleneintrages
+        ;mul     cx                              ; * Eintragsnummer
+        ;mov     bx, ax
         mov     bx, [(TMode ModeTable + bx).ModeName]   ; Zeiger auf Namen
         ret
 
@@ -2133,7 +2133,7 @@ PROC    SetDrawPage FAR
         mov     bx, [ModePtr]                   ; Zeiger auf Modus-Deskriptor
         
 		IF P80386        
-			movzx     bl, [(TMode bx).CardType]       ; Kartentyp holen
+			movzx     bx, [(TMode bx).CardType]       ; Kartentyp holen
 		ELSE
 	        mov     bl, [(TMode bx).CardType]       ; Kartentyp holen
     	    xor     bh, bh                           ; ... nach bx

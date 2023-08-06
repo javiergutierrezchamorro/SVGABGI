@@ -115,7 +115,7 @@ PROC    S3_Vect Near
 @@L2:   S3_Out  FRGD_MIX
 
 	IF P80386        
-		mov     ax, [DrawingColor]
+		movzx   ax, [DrawingColor]
 	ELSE
 	        mov     al, [DrawingColor]
         	xor     ah, ah
