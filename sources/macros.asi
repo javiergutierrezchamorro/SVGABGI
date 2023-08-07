@@ -14,8 +14,12 @@
 
 
 MACRO   LOOPCX  Lbl
-        dec     cx
-        jnz     Lbl
+	IF P80386
+	        dec     cx
+	        jnz     Lbl
+        ELSE
+		loop	Lbl
+	ENDIF
 ENDM    LOOPCX
 
 

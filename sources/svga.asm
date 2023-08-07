@@ -1643,8 +1643,9 @@ ENDP    RestoreNOT
 
 PROC    RestoreTrans    NEAR
 
-@@L1:   mov     al, [si]                ; Byte holen
-        inc     si
+@@L1:   ;mov     al, [si]                ; Byte holen
+        ;inc     si
+        lodsb
         test    al, al                   ; = 0
         jz      @@L3                    ; Dann nicht schreiben
         mov     [es:di], al             ; Byte schreiben
