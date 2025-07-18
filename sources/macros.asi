@@ -74,12 +74,11 @@ ENDM
 
 MACRO	RepMovS
 IF P80386
-	;and     ecx, 0FFFFh
-	push    ecx
-	shr     ecx, 2
+	push    cx
+	shr     cx, 2
 	rep	movsd
-	pop     ecx
-	and     ecx, 3
+	pop     cx
+	and     cx, 3
 	rep	movsb
 ELSE
         shr     cx, 1                   ; / 2 fÅr Worte
@@ -95,12 +94,11 @@ IF P80386
 	push	ax
 	push	ax
 	pop	eax
-	;and     ecx, 0FFFFh		
-	push    ecx
-	shr     ecx, 2
+	push    cx
+	shr     cx, 2
 	rep	stosd
-	pop     ecx
-	and     ecx, 3
+	pop     cx
+	and     cx, 3
 	rep	stosb
 ELSE
         shr     cx, 1                   ; / 2 fÅr Worte
